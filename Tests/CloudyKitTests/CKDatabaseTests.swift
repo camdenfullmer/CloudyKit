@@ -6,6 +6,9 @@
 //
 
 import XCTest
+#if os(Linux)
+import FoundationNetworking
+#endif
 @testable import CloudyKit
 
 final class CKDatabaseTests: XCTestCase {
