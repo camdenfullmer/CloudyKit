@@ -13,5 +13,7 @@ jobs:
       image: swift:5.3
     steps:
       - uses: actions/checkout@v2
+      - name: Install OpenSSL
+        run: apt-get install openssl libssl-dev
       - name: Test CloudyKit
         run: swift test
