@@ -1,6 +1,8 @@
 # CloudyKit
 
 ![Test workflow](https://github.com/camdenfullmer/CloudyKit/workflows/Test/badge.svg)
+[![Twitter](https://img.shields.io/badge/Twitter-@camdenfullmer-blue.svg?style=flat)](https://twitter.com/camdenfullmer)
+[![Twitch](https://img.shields.io/badge/Twitch-@CamdenTheCreator-purple.svg?style=flat)](https://twitch.tv/CamdenTheCreator)
 
 CloudyKit is a drop-in replacement for Apple's [CloudKit](https://developer.apple.com/icloud/cloudkit/) on Linux. It uses [CloudKit Web Services](https://developer.apple.com/library/archive/documentation/DataManagement/Conceptual/CloudKitWebServicesReference/index.html) behind the scenes and has the same [API](https://developer.apple.com/documentation/cloudkit) that is used on iOS and macOS.
 
@@ -10,7 +12,8 @@ CloudyKit is a drop-in replacement for Apple's [CloudKit](https://developer.appl
   - [Configuration](#configuration)
     - [Server-to-Server Key](#server-to-server-key)
     - [Environment](#environment)
-  - [Support](#support)
+  - [Supported Features](#supported-features)
+  - [Questions](#questions)
 
 ## Installation
 
@@ -48,13 +51,17 @@ CloudyKit allows you to switch between your development and production environme
 CloudyKitConfig.environment = .development | .production
 ```
 
-## Support
+## Supported Features
 
 Below is the list of supported and upcoming features for CloudyKit.
 
 - [x] Creating Records
-- [ ] Saving Records
+- [x] Saving Records
 - [ ] Fetching Records
 - [ ] Querying Records
 - [ ] Deleting Records
 - [ ] All Types (References, Assets, Locations, Dates, Bytes, Doubles, Lists)
+
+## Questions
+
+Please open up an issue or reach out to me on [Twitter](https://twitter.com/camdenfullmer) or [Twitch](https://twitch.tv/CamdenTheCreator) if you have any questions or need help using the library!
