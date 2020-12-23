@@ -14,6 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install OpenSSL
-        run: apt-get update && apt-get install -y install openssl libssl-dev
+        run: apt-get update && apt-get install -y openssl libssl-dev
       - name: Test CloudyKit
         run: swift test
