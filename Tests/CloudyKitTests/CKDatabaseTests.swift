@@ -104,7 +104,7 @@ final class CKDatabaseTests: XCTestCase {
         let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
         let expectation = self.expectation(description: "completion handler called")
         database.fetch(withRecordID: recordID) { (record, error) in
-            XCTAssertEqual("GET", self.mockedSession?.request?.httpMethod)
+            XCTAssertEqual("POST", self.mockedSession?.request?.httpMethod)
             XCTAssertNotNil(self.mockedSession?.request?.httpBody)
             XCTAssertEqual("1234567890", self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
             XCTAssertNotNil(self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
