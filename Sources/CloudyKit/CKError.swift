@@ -10,6 +10,7 @@ import Foundation
 public struct CKError: Error {
     public enum Code: Int {
         case internalError = 1
+        case invalidArguments = 12
     }
     
     public var errorCode: Int {

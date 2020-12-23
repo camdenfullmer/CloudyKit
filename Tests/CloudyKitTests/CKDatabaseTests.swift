@@ -71,6 +71,7 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual(18, record?["width"] as? Int)
             XCTAssertEqual(24, record?["height"] as? Int)
             XCTAssertNotNil(record?.creationDate)
+            XCTAssertNotNil(record?.recordChangeTag)
             expectation.fulfill()
         }
         self.wait(for: [expectation], timeout: 1)
@@ -118,6 +119,31 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual(18, record?["width"] as? Int)
             XCTAssertEqual(24, record?["height"] as? Int)
             XCTAssertNotNil(record?.creationDate)
+            XCTAssertNotNil(record?.recordChangeTag)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
+    
+    func testNoRecordChangeTagError() {
+        let response = """
+{
+    "uuid" : "\(UUID().uuidString)",
+    "serverErrorCode" : "BAD_REQUEST",
+    "reason" : "BadRequestException: missing required field 'recordChangeTag'"
+}
+"""
+        self.mockedSession?.mockedData = response.data(using: .utf8)
+        self.mockedSession?.mockedResponse = HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 400, httpVersion: nil, headerFields: nil)
+        
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
+        let expectation = self.expectation(description: "completion handler called")
+        database.fetch(withRecordID: recordID) { (record, error) in
+            XCTAssertNil(record)
+            XCTAssertNotNil(error)
+            XCTAssertEqual(CloudyKit.CKError.Code.invalidArguments.rawValue, (error as? CloudyKit.CKError)?.errorCode)
             expectation.fulfill()
         }
         self.wait(for: [expectation], timeout: 1)
@@ -126,6 +152,7 @@ final class CKDatabaseTests: XCTestCase {
     static var allTests = [
         ("testSaveNewRecord", testSaveNewRecord),
         ("testFetchRecord", testFetchRecord),
+        ("testNoRecordChangeTagError", testNoRecordChangeTagError),
     ]
 }
 

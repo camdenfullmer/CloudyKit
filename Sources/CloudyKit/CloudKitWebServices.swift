@@ -7,6 +7,12 @@
 
 import Foundation
 
+struct CKWSErrorResponse: Decodable {
+    let uuid: String
+    let serverErrorCode: String
+    let reason: String
+}
+
 struct CKWSResponseCreated: Codable {
     let timestamp: Int
 }

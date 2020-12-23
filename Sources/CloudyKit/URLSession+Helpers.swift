@@ -38,11 +38,26 @@ extension NetworkSession {
                 return
             }
             guard response.statusCode == 200 else {
-                if let data = data, let message = String(data: data, encoding: .utf8) {
-                    // TODO: Handle error
-                    if CloudyKitConfig.debug {
-                        print("status code: \(response.statusCode)")
-                        print("data: \(message)")
+                if let data = data {
+                    if let ckwsError = try? CloudyKitConfig.decoder.decode(CKWSErrorResponse.self, from: data) {
+                        if CloudyKitConfig.debug {
+                            print("status code: \(response.statusCode)")
+                            print("error: \(ckwsError)")
+                        }
+                        if ckwsError.serverErrorCode == "BAD_REQUEST" {
+                            completionHandler(nil, CKError(code: .invalidArguments))
+                        } else {
+                            completionHandler(nil, CKError(code: .internalError))
+                        }
+                        return
+                    } else if let message = String(data: data, encoding: .utf8) {
+                        // TODO: Handle error
+                        if CloudyKitConfig.debug {
+                            print("status code: \(response.statusCode)")
+                            print("data: \(message)")
+                        }
+                        completionHandler(nil, CKError(code: .internalError))
+                        return
                     }
                     completionHandler(nil, CKError(code: .internalError))
                     return
@@ -77,6 +92,7 @@ extension NetworkSession {
                     let id = CKRecord.ID(recordName: responseRecord.recordName)
                     let record = CKRecord(recordType: recordType, recordID: id)
                     record.creationDate = Date(timeIntervalSince1970: TimeInterval(createdTimestamp) / 1000)
+                    record.recordChangeTag = responseRecord.recordChangeTag
                     for (fieldName, fieldValue) in responseRecord.fields ?? [:] {
                         switch fieldValue.value {
                         case .string(let value): record[fieldName] = value
@@ -114,7 +130,7 @@ extension NetworkSession {
         }
         let recordDictionary = CKWSRecordDictionary(recordName: record.recordID.recordName,
                                                     recordType: record.recordType,
-                                                    recordChangeTag: nil,
+                                                    recordChangeTag: record.recordChangeTag,
                                                     fields: fields,
                                                     created: nil)
         let operationType: CKWSRecordOperation.OperationType = record.creationDate == nil ? .create : .update
