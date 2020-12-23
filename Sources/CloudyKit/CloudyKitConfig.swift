@@ -13,6 +13,7 @@ public class CloudyKitConfig {
     public static var environment: Environment = .development
     public static var serverKeyID: String = "Make sure to update this with your server key."
     public static var serverPrivateKey: CKPrivateKey? = nil
+    public static var debug = false
     
     internal static var urlSession: NetworkSession = URLSession(configuration: .default)
     internal static let host = "https://api.apple-cloudkit.com"

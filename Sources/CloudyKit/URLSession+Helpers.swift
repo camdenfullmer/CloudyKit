@@ -38,8 +38,12 @@ extension NetworkSession {
                 return
             }
             guard response.statusCode == 200 else {
-                if let data = data, let _ /* message */ = String(data: data, encoding: .utf8) {
+                if let data = data, let message = String(data: data, encoding: .utf8) {
                     // TODO: Handle error
+                    if CloudyKitConfig.debug {
+                        print("status code: \(response.statusCode)")
+                        print("data: \(message)")
+                    }
                     completionHandler(nil, CKError(code: .internalError))
                     return
                 }
@@ -81,6 +85,10 @@ extension NetworkSession {
                     }
                     completionHandler(record, nil)
                 } catch {
+                    if CloudyKitConfig.debug {
+                        print("error decoding: \(error.localizedDescription)")
+                        print("data: \(String(data: data, encoding: .utf8) ?? "no data")")
+                    }
                     completionHandler(nil, error)
                 }
             }
