@@ -37,7 +37,7 @@ First, you must create a [Server-to-Server Key](https://developer.apple.com/libr
 
 ```swift
 CloudyKitConfig.serverKeyID = "YOUR SERVER KEY ID"
-CloudyKitConfig.serverPrivateKey = "YOUR SERVER PRIVATE KEY"
+CloudyKitConfig.serverPrivateKey = CKPrivateKey(path: "eckey.pem")
 ```
 
 ### Environment

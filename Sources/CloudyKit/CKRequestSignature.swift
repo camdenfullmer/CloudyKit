@@ -14,13 +14,13 @@ class CKRequestSignature {
     let data: Data
     let date: Date
     let path: String
-    let ecPrivateKey: ECPrivateKey
+    let privateKey: CKPrivateKey
     
-    init(data: Data, date: Date, path: String, ecPrivateKey: ECPrivateKey) {
+    init(data: Data, date: Date, path: String, privateKey: CKPrivateKey) {
         self.data = data
         self.date = date
         self.path = path
-        self.ecPrivateKey = ecPrivateKey
+        self.privateKey = privateKey
     }
     
     func sign() throws -> String {
@@ -31,7 +31,7 @@ class CKRequestSignature {
         let hash = dataDigest.final()
         let base64BodyHash = Data(bytes: hash, count: hash.count).base64EncodedString()
         let signaturePayload = "\(CloudyKitConfig.dateFormatter.string(from: date)):\(base64BodyHash):\(path)"
-        return try signaturePayload.sign(with: self.ecPrivateKey).asn1.base64EncodedString()
+        return try signaturePayload.sign(with: self.privateKey.ecPrivateKey).asn1.base64EncodedString()
     }
     
 }

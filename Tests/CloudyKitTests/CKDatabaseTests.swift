@@ -10,8 +10,6 @@ import XCTest
 import FoundationNetworking
 #endif
 @testable import CloudyKit
-import Cryptor
-import CryptorECC
 
 final class CKDatabaseTests: XCTestCase {
     
@@ -21,9 +19,7 @@ final class CKDatabaseTests: XCTestCase {
         let session = MockedNetworkSession()
         CloudyKitConfig.urlSession = session
         CloudyKitConfig.serverKeyID = "1234567890"
-        if let data = try? Data.loadAsset(name: "eckey.pem"), let key = String(data: data, encoding: .utf8) {
-            CloudyKitConfig.serverPrivateKey = try? ECPrivateKey(key: key)
-        }
+        CloudyKitConfig.serverPrivateKey = try! CKPrivateKey(data: Data.loadAsset(name: "eckey.pem"))
         self.mockedSession = session
     }
     

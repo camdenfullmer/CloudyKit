@@ -2,8 +2,6 @@ import Foundation
 #if os(Linux)
 import FoundationNetworking
 #endif
-import Cryptor
-import CryptorECC
 
 public class CloudyKitConfig {
     
@@ -14,7 +12,7 @@ public class CloudyKitConfig {
     
     public static var environment: Environment = .development
     public static var serverKeyID: String = "Make sure to update this with your server key."
-    public static var serverPrivateKey: ECPrivateKey? = nil
+    public static var serverPrivateKey: CKPrivateKey? = nil
     
     internal static var urlSession: NetworkSession = URLSession(configuration: .default)
     internal static let host = "https://api.apple-cloudkit.com"

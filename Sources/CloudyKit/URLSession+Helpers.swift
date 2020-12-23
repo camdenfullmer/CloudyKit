@@ -82,7 +82,7 @@ extension NetworkSession {
         let operation = CKRecordOperation(operationType: operationType, desiredKeys: nil, record: recordDictionary)
         let modifyRequest = CKModifyRecordRequest(operations: [operation])
         if let data = try? CloudyKitConfig.encoder.encode(modifyRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
-            let signature = CKRequestSignature(data: data, date: now, path: path, ecPrivateKey: privateKey)
+            let signature = CKRequestSignature(data: data, date: now, path: path, privateKey: privateKey)
             if let signatureValue = try? signature.sign() {
                 request.addValue(signatureValue, forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1")
             }
