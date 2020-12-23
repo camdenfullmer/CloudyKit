@@ -1,5 +1,5 @@
 //
-//  CKModifyRecordRequest.swift
+//  CloudKitWebServices.swift
 //  
 //
 //  Created by Camden on 12/21/20.
@@ -7,11 +7,11 @@
 
 import Foundation
 
-struct CKResponseCreated: Codable {
+struct CKWSResponseCreated: Codable {
     let timestamp: Int
 }
 
-enum CKValue: Codable {
+enum CKWSValue: Codable {
     case string(String)
     case number(Int)
     
@@ -36,24 +36,24 @@ enum CKValue: Codable {
     }
 }
 
-struct CKRecordFieldValue: Codable {
-    let value: CKValue
+struct CKWSRecordFieldValue: Codable {
+    let value: CKWSValue
     let type: String?    
-    internal init(value: CKValue, type: String?) {
+    internal init(value: CKWSValue, type: String?) {
         self.value = value
         self.type = type
     }
 }
 
-struct CKRecordDictionary: Codable {
+struct CKWSRecordDictionary: Codable {
     let recordName: String
     let recordType: String?
     let recordChangeTag: String?
-    let fields: [String:CKRecordFieldValue]?
-    let created: CKResponseCreated?
+    let fields: [String:CKWSRecordFieldValue]?
+    let created: CKWSResponseCreated?
 }
 
-struct CKRecordOperation: Encodable {
+struct CKWSRecordOperation: Encodable {
     enum OperationType: String, Encodable {
         case create = "create"
         case update = "update"
@@ -66,13 +66,21 @@ struct CKRecordOperation: Encodable {
     
     let operationType: OperationType
     let desiredKeys: [String]?
-    let record: CKRecordDictionary
+    let record: CKWSRecordDictionary
 }
 
-struct CKModifyRecordRequest: Encodable {
-    let operations: [CKRecordOperation]
+struct CKWSRecordResponse: Decodable {
+    let records: [CKWSRecordDictionary]
 }
 
-struct CKModifyRecordResponse: Decodable {
-    let records: [CKRecordDictionary]
+struct CKWSModifyRecordRequest: Encodable {
+    let operations: [CKWSRecordOperation]
+}
+
+struct CKWSLookupRecordDictionary: Encodable {
+    let recordName: String
+}
+
+struct CKWSFetchRecordRequest: Encodable {
+    let records: [CKWSLookupRecordDictionary]
 }

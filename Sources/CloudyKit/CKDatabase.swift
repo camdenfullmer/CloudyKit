@@ -32,6 +32,14 @@ public class CKDatabase {
         task.resume()
     }
     
+    public func fetch(withRecordID recordID: CKRecord.ID, completionHandler: @escaping (CKRecord?, Error?) -> Void) {
+        let task = CloudyKitConfig.urlSession.fetchTask(database: self,
+                                                        environment: CloudyKitConfig.environment,
+                                                        recordID: recordID,
+                                                        completionHandler: completionHandler)
+        task.resume()
+    }
+    
 }
 
 extension CKDatabase.Scope: CustomStringConvertible {
