@@ -20,6 +20,7 @@ public class CKRecord {
     
     public let recordID: ID
     public let recordType: RecordType
+    public internal(set) var creationDate: Date?
 
     internal var fields: [String:Any]
     
@@ -27,6 +28,7 @@ public class CKRecord {
         self.recordType = recordType
         self.recordID = recordID
         self.fields = [:]
+        self.creationDate = nil
     }
     
     public subscript(string: String) -> Any? {

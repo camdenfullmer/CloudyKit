@@ -27,7 +27,7 @@ final class CKDatabaseTests: XCTestCase {
         self.mockedSession = session
     }
     
-    func testSave() {
+    func testSaveNewRecord() {
         let response = """
 {
         "records": [
@@ -35,6 +35,9 @@ final class CKDatabaseTests: XCTestCase {
                 "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
                 "recordType": "Users",
                 "recordChangeTag": "\(UUID().uuidString)",
+                "created": {
+                    "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
+                },
                 "fields": {
                     "firstName" : {"value" : "Mei"},
                     "lastName" : {"value" : "Chen"},
@@ -51,6 +54,11 @@ final class CKDatabaseTests: XCTestCase {
         let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
         let database = container.publicDatabase
         let record = CloudyKit.CKRecord(recordType: "Users")
+        record["firstName"] = "Mei"
+        record["lastName"] = "Chen"
+        record["width"] = 18
+        record["height"] = 24
+        XCTAssertNil(record.creationDate)
         let expectation = self.expectation(description: "completion handler called")
         database.save(record) { (record, error) in
             XCTAssertEqual("POST", self.mockedSession?.request?.httpMethod)
@@ -66,13 +74,14 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual("Chen", record?["lastName"] as? String)
             XCTAssertEqual(18, record?["width"] as? Int)
             XCTAssertEqual(24, record?["height"] as? Int)
+            XCTAssertNotNil(record?.creationDate)
             expectation.fulfill()
         }
         self.wait(for: [expectation], timeout: 1)
     }
 
     static var allTests = [
-        ("testSave", testSave),
+        ("testSave", testSaveNewRecord),
     ]
 }
 

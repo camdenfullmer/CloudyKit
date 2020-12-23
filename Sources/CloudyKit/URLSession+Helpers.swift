@@ -76,8 +76,10 @@ extension NetworkSession {
         let recordDictionary = CKRecordDictionary(recordName: record.recordID.recordName,
                                                   recordType: record.recordType,
                                                   recordChangeTag: nil,
-                                                  fields: fields)
-        let operation = CKRecordOperation(operationType: .create, desiredKeys: nil, record: recordDictionary)
+                                                  fields: fields,
+                                                  created: nil)
+        let operationType: CKRecordOperation.OperationType = record.creationDate == nil ? .create : .update
+        let operation = CKRecordOperation(operationType: operationType, desiredKeys: nil, record: recordDictionary)
         let modifyRequest = CKModifyRecordRequest(operations: [operation])
         if let data = try? CloudyKitConfig.encoder.encode(modifyRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
             let signature = CKRequestSignature(data: data, date: now, path: path, ecPrivateKey: privateKey)
@@ -94,12 +96,14 @@ extension NetworkSession {
                 do {
                     let response = try CloudyKitConfig.decoder.decode(CKModifyRecordResponse.self, from: data)
                     guard let responseRecord = response.records.first,
-                          let recordType = responseRecord.recordType else {
+                          let recordType = responseRecord.recordType,
+                          let createdTimestamp = responseRecord.created?.timestamp else {
                         completionHandler(nil, CKError(code: .internalError))
                         return
                     }
                     let id = CKRecord.ID(recordName: responseRecord.recordName)
                     let record = CKRecord(recordType: recordType, recordID: id)
+                    record.creationDate = Date(timeIntervalSince1970: TimeInterval(createdTimestamp) / 1000)
                     for (fieldName, fieldValue) in responseRecord.fields ?? [:] {
                         switch fieldValue.value {
                         case .string(let value): record[fieldName] = value

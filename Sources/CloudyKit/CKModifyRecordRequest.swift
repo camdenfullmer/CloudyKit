@@ -7,6 +7,10 @@
 
 import Foundation
 
+struct CKResponseCreated: Codable {
+    let timestamp: Int
+}
+
 enum CKValue: Codable {
     case string(String)
     case number(Int)
@@ -46,6 +50,7 @@ struct CKRecordDictionary: Codable {
     let recordType: String?
     let recordChangeTag: String?
     let fields: [String:CKRecordFieldValue]?
+    let created: CKResponseCreated?
 }
 
 struct CKRecordOperation: Encodable {

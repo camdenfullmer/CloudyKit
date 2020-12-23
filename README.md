@@ -57,3 +57,4 @@ Below is the list of supported and upcoming features for CloudyKit.
 - [ ] Fetching Records
 - [ ] Querying Records
 - [ ] Deleting Records
+- [ ] All Types (References, Assets, Locations, Dates, Bytes, Doubles, Lists)
