@@ -1,3 +1,4 @@
 #!/bin/bash
 
-docker run --rm -it -v $(PWD):/CloudyKit -w /CloudyKit swift:5.3 swift test
+docker build -t cloudykit:latest .
+docker run --rm -it -v $(PWD):/CloudyKit -w /CloudyKit cloudykit:latest swift test
