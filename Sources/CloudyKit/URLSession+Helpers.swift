@@ -62,13 +62,30 @@ extension NetworkSession {
         var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        // TODO: Get from CloudyKit config
-//        request.addValue(environment.keyID, forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID")
+        request.addValue(CloudyKitConfig.serverKeyID, forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID")
         request.addValue(CloudyKitConfig.dateFormatter.string(from: now), forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date")
-//        let data = try! JSONEncoder().encode(QueryRequest(query: query))
-//        let signature = environment.signature(for: data, date: date, path: path)
-//        request.addValue(signature, forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1")
-//        request.httpBody = data
+        
+        let fields: [String:CKRecordFieldValue] = record.fields.compactMapValues {
+            switch $0 {
+            case let value as Int: return CKRecordFieldValue(value: .number(value), type: nil)
+            case let value as String: return CKRecordFieldValue(value: .string(value), type: nil)
+            // TODO: Add debug message here.
+            default: return nil
+            }
+        }
+        let recordDictionary = CKRecordDictionary(recordName: record.recordID.recordName,
+                                                  recordType: record.recordType,
+                                                  recordChangeTag: nil,
+                                                  fields: fields)
+        let operation = CKRecordOperation(operationType: .create, desiredKeys: nil, record: recordDictionary)
+        let modifyRequest = CKModifyRecordRequest(operations: [operation])
+        if let data = try? CloudyKitConfig.encoder.encode(modifyRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
+            let signature = CKRequestSignature(data: data, date: now, path: path, ecPrivateKey: privateKey)
+            if let signatureValue = try? signature.sign() {
+                request.addValue(signatureValue, forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1")
+            }
+            request.httpBody = data
+        }
         return self.successfulDataTask(with: request) { (data, error) in
             if let error = error {
                 completionHandler(nil, error)
@@ -76,12 +93,19 @@ extension NetworkSession {
             if let data = data {
                 do {
                     let response = try CloudyKitConfig.decoder.decode(CKModifyRecordResponse.self, from: data)
-                    guard let responseRecord = response.records.first else {
+                    guard let responseRecord = response.records.first,
+                          let recordType = responseRecord.recordType else {
                         completionHandler(nil, CKError(code: .internalError))
                         return
                     }
                     let id = CKRecord.ID(recordName: responseRecord.recordName)
-                    let record = CKRecord(recordType: responseRecord.recordType, recordID: id)
+                    let record = CKRecord(recordType: recordType, recordID: id)
+                    for (fieldName, fieldValue) in responseRecord.fields ?? [:] {
+                        switch fieldValue.value {
+                        case .string(let value): record[fieldName] = value
+                        case .number(let value): record[fieldName] = value
+                        }
+                    }
                     completionHandler(record, nil)
                 } catch {
                     completionHandler(nil, error)
