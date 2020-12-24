@@ -59,7 +59,7 @@ Below is the list of supported and upcoming features for CloudyKit.
 - [x] Saving Records
 - [x] Fetching Records
 - [ ] Querying Records
-- [ ] Deleting Records
+- [x] Deleting Records
 - [ ] All Types (References, Assets, Locations, Dates, Bytes, Doubles, Lists)
 - [ ] Private and Shared Databases
 - [ ] CKDatabase Operations
