@@ -178,6 +178,28 @@ final class CKDatabaseTests: XCTestCase {
         }
         self.wait(for: [expectation], timeout: 1)
     }
+    
+    func testCouldNotDecodeError() {
+        let response = """
+{
+    "uuid" : "\(UUID().uuidString)",
+    "serverErrorCode" : "BAD_REQUEST",
+    "reason" : "could not decode asset object"
+}
+"""
+        self.mockedSession?.mockedData = response.data(using: .utf8)        
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
+        let expectation = self.expectation(description: "completion handler called")
+        database.fetch(withRecordID: recordID) { (record, error) in
+            XCTAssertNil(record)
+            XCTAssertNotNil(error)
+            XCTAssertEqual(CloudyKit.CKError.Code.invalidArguments.rawValue, (error as? CloudyKit.CKError)?.errorCode)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
 
     static var allTests = [
         ("testSaveNewRecord", testSaveNewRecord),

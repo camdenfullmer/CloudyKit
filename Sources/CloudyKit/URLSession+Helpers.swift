@@ -52,11 +52,7 @@ extension NetworkSession {
                         if CloudyKitConfig.debug {
                             print("error: \(ckwsError)")
                         }
-                        if ckwsError.serverErrorCode == "BAD_REQUEST" {
-                            completionHandler(nil, CKError(code: .invalidArguments))
-                        } else {
-                            completionHandler(nil, CKError(code: .internalError))
-                        }
+                        completionHandler(nil, ckwsError.ckError)
                         return
                     }
                     completionHandler(nil, CKError(code: .internalError))
@@ -71,6 +67,11 @@ extension NetworkSession {
                 completionHandler(nil, CKError(code: .internalError))
                 return
             }
+            if let ckwsError = try? CloudyKitConfig.decoder.decode(CKWSErrorResponse.self, from: data) {
+                completionHandler(nil, ckwsError.ckError)
+                return
+            }
+            
             completionHandler(data, nil)
         }
     }

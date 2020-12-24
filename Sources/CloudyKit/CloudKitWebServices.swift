@@ -13,6 +13,18 @@ struct CKWSErrorResponse: Decodable {
     let reason: String
 }
 
+extension CKWSErrorResponse {
+    
+    var ckError: CKError {
+        if self.serverErrorCode == "BAD_REQUEST" {
+            return CKError(code: .invalidArguments)
+        } else {
+            return CKError(code: .internalError)
+        }
+    }
+    
+}
+
 struct CKWSResponseCreated: Codable {
     let timestamp: Int
 }
