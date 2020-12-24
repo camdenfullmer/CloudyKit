@@ -6,6 +6,11 @@
 //
 
 import Foundation
+#if os(Linux)
+import OpenCombine
+#else
+import Combine
+#endif
 
 public class CKDatabase {
     
@@ -24,7 +29,24 @@ public class CKDatabase {
         self.databaseScope = databaseScope
     }
     
-    public func save(_ record: CKRecord, completionHandler: @escaping (CKRecord?, Error?) -> Void) {
+    var cancelable: AnyCancellable? = nil
+    
+    public func save(_ record: CKRecord, completionHandler: @escaping (CKRecord?, Error?) -> Void) {        
+//        let assetFieldDictionarys: [CKWSAssetFieldDictionary] = record.fields.compactMap { fieldName, value in
+//            guard value is CKAsset else {
+//                return nil
+//            }
+//            return CKWSAssetFieldDictionary(recordName: record.recordID.recordName,
+//                                            recordType: record.recordType,
+//                                            fieldName: fieldName)
+//        }
+//        if assetFieldDictionarys.count > 0 {
+//            let tokenRequest = CKWSAssetTokenRequest(tokens: assetFieldDictionarys)
+//            let task = CloudyKitConfig.urlSession.requestAssetTokenTask(database: self, environment: CloudyKitConfig.environment, tokenRequest: tokenRequest) { (tokenResponse, error) in
+//                // TODO:
+//            }
+//            task.resume()
+//        }
         let task = CloudyKitConfig.urlSession.saveTask(database: self,
                                                        environment: CloudyKitConfig.environment,
                                                        record: record,
@@ -41,11 +63,30 @@ public class CKDatabase {
     }
     
     public func delete(withRecordID recordID: CKRecord.ID, completionHandler: @escaping (CKRecord.ID?, Error?) -> Void) {
-        let task = CloudyKitConfig.urlSession.deleteTask(database: self,
-                                                         environment: CloudyKitConfig.environment,
-                                                         recordID: recordID,
-                                                         completionHandler: completionHandler)
-        task.resume()
+        self.cancelable = CloudyKitConfig.urlSession.deleteTaskPublisher(database: self, environment: CloudyKitConfig.environment, recordID: recordID)
+            .tryMap { output in
+                // TODO: Handle error better
+                guard let response = output.response as? HTTPURLResponse, response.statusCode == 200 else {
+                    throw CKError(code: .internalError)
+                }
+                return output.data
+            }
+            .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
+            .sink(receiveCompletion: { completion in
+                switch completion {
+                case .finished:
+                    break
+                case .failure(let error):
+                    completionHandler(nil, error)
+                }
+            }, receiveValue: { response in
+                guard let responseRecord = response.records.first else {
+                    completionHandler(nil, CKError(code: .internalError))
+                    return
+                }
+                let recordID = CKRecord.ID(recordName: responseRecord.recordName)
+                completionHandler(recordID, nil)
+            })
     }
 }
 

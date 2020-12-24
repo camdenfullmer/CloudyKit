@@ -22,14 +22,18 @@ let package = Package(
         .package(
             name: "CryptorECC",
             url: "https://github.com/IBM-Swift/BlueECC.git",
-            from: "1.2.5"),
+            from: "1.2.4"),
+        .package(
+            name: "OpenCombine",
+            url: "https://github.com/OpenCombine/OpenCombine.git",
+            from: "0.11.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "CloudyKit",
-            dependencies: ["Cryptor", "CryptorECC"]),
+            dependencies: ["Cryptor", "CryptorECC", "OpenCombine"]),
         .testTarget(
             name: "CloudyKitTests",
             dependencies: ["CloudyKit"],

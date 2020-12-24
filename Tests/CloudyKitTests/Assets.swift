@@ -15,3 +15,8 @@ extension Data {
     }
     
 }
+
+func assetURL(name: String) -> URL? {
+    let path = #file.replacingOccurrences(of: "/Assets.swift", with: "/Assets/") + name
+    return URL(fileURLWithPath: path)
+}

@@ -29,9 +29,19 @@ struct CKWSResponseCreated: Codable {
     let timestamp: Int
 }
 
+struct CKWSAssetDictionary: Encodable {
+    let fileChecksum: String
+    let size: Int
+    let referenceChecksum: String?
+    let wrappingKey: String?
+    let receipt: String
+    let downloadURL: String?
+}
+
 enum CKWSValue: Codable {
     case string(String)
     case number(Int)
+    case asset(CKAsset)
     
     init(from decoder: Decoder) throws {
         // TODO: This is not going to work for references or booleans.
@@ -46,10 +56,22 @@ enum CKWSValue: Codable {
     }
     
     func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
         switch self {
-        case .string(let value): try container.encode(value)
-        case .number(let value): try container.encode(value)
+        case .string(let value):
+            var container = encoder.singleValueContainer()
+            try container.encode(value)
+        case .number(let value):
+            var container = encoder.singleValueContainer()
+            try container.encode(value)
+        case .asset(_):
+            var container = encoder.unkeyedContainer()
+            let assetDictionary = CKWSAssetDictionary(fileChecksum: "",
+                                                      size: 0,
+                                                      referenceChecksum: nil,
+                                                      wrappingKey: nil,
+                                                      receipt: "",
+                                                      downloadURL: nil)
+            try container.encode(assetDictionary)
         }
     }
 }
@@ -101,4 +123,20 @@ struct CKWSLookupRecordDictionary: Encodable {
 
 struct CKWSFetchRecordRequest: Encodable {
     let records: [CKWSLookupRecordDictionary]
+}
+
+struct CKWSTokenResponseDictionary: Decodable {
+    let recordName: String
+    let fieldName: String
+    let url: String
+}
+
+struct CKWSAssetFieldDictionary: Encodable {
+    let recordName: String
+    let recordType: String
+    let fieldName: String
+}
+
+struct CKWSAssetTokenRequest: Encodable {
+    let tokens: [CKWSAssetFieldDictionary]
 }

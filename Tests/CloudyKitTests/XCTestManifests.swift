@@ -6,6 +6,7 @@ public func allTests() -> [XCTestCaseEntry] {
         testCase(CKContainerTests.allTests),
         testCase(CKRecordTests.allTests),
         testCase(CKDatabaseTests.allTests),
+        testCase(CKAssetTests.allTests),
     ]
 }
 #endif
