@@ -65,6 +65,7 @@ Below is the list of supported and upcoming features for CloudyKit.
 - [ ] CKDatabase Operations
 - [ ] CKErrors
 - [ ] Fetching Record Changes
+- [ ] Uploading Assets
 
 ## Questions
 
