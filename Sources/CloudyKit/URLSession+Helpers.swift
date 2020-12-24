@@ -39,16 +39,17 @@ extension NetworkSession {
             }
             if let data = data {
                 if CloudyKitConfig.debug {
-                    print("=== CloudKit Web Services Response Data ===")
+                    print("=== CloudKit Web Services Response ===")
+                    print("Status Code: \(response.statusCode)")
+                    print("Data:")
                     print("\(String(data: data, encoding: .utf8) ?? "invalid data")")
-                    print("===========================================")
+                    print("======================================")
                 }
             }
             guard response.statusCode == 200 else {
                 if let data = data {
                     if let ckwsError = try? CloudyKitConfig.decoder.decode(CKWSErrorResponse.self, from: data) {
                         if CloudyKitConfig.debug {
-                            print("status code: \(response.statusCode)")
                             print("error: \(ckwsError)")
                         }
                         if ckwsError.serverErrorCode == "BAD_REQUEST" {
@@ -56,14 +57,6 @@ extension NetworkSession {
                         } else {
                             completionHandler(nil, CKError(code: .internalError))
                         }
-                        return
-                    } else if let message = String(data: data, encoding: .utf8) {
-                        // TODO: Handle error
-                        if CloudyKitConfig.debug {
-                            print("status code: \(response.statusCode)")
-                            print("data: \(message)")
-                        }
-                        completionHandler(nil, CKError(code: .internalError))
                         return
                     }
                     completionHandler(nil, CKError(code: .internalError))
