@@ -125,6 +125,36 @@ final class CKDatabaseTests: XCTestCase {
         self.wait(for: [expectation], timeout: 1)
     }
     
+    func testDeleteRecord() {
+        let response = """
+{
+        "records": [
+            {
+                "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F"
+            }
+        ]
+}
+"""
+        self.mockedSession?.mockedData = response.data(using: .utf8)
+        
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
+        let expectation = self.expectation(description: "completion handler called")
+        database.delete(withRecordID: recordID) { (recordID, error) in
+            XCTAssertEqual("POST", self.mockedSession?.request?.httpMethod)
+            XCTAssertNotNil(self.mockedSession?.request?.httpBody)
+            XCTAssertEqual("1234567890", self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
+            XCTAssertNotNil(self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
+            XCTAssertNotNil(self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
+            XCTAssertNil(error)
+            XCTAssertNotNil(recordID)
+            XCTAssertEqual("E621E1F8-C36C-495A-93FC-0C247A3E6E5F", recordID?.recordName)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
+    
     func testNoRecordChangeTagError() {
         let response = """
 {
@@ -153,6 +183,7 @@ final class CKDatabaseTests: XCTestCase {
         ("testSaveNewRecord", testSaveNewRecord),
         ("testFetchRecord", testFetchRecord),
         ("testNoRecordChangeTagError", testNoRecordChangeTagError),
+        ("testDeleteRecord", testDeleteRecord),
     ]
 }
 

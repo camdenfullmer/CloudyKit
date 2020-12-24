@@ -40,6 +40,13 @@ public class CKDatabase {
         task.resume()
     }
     
+    public func delete(withRecordID recordID: CKRecord.ID, completionHandler: @escaping (CKRecord.ID?, Error?) -> Void) {
+        let task = CloudyKitConfig.urlSession.deleteTask(database: self,
+                                                         environment: CloudyKitConfig.environment,
+                                                         recordID: recordID,
+                                                         completionHandler: completionHandler)
+        task.resume()
+    }
 }
 
 extension CKDatabase.Scope: CustomStringConvertible {

@@ -111,6 +111,31 @@ extension NetworkSession {
         }
     }
     
+    internal func recordIDResponseTask(with request: URLRequest, completionHandler: @escaping (CKRecord.ID?, Error?) -> Void) -> NetworkSessionDataTask {
+        return self.successfulDataTask(with: request) { (data, error) in
+            if let error = error {
+                completionHandler(nil, error)
+            }
+            if let data = data {
+                do {
+                    let response = try CloudyKitConfig.decoder.decode(CKWSRecordResponse.self, from: data)
+                    guard let responseRecord = response.records.first else {
+                        completionHandler(nil, CKError(code: .internalError))
+                        return
+                    }
+                    let id = CKRecord.ID(recordName: responseRecord.recordName)
+                    completionHandler(id, nil)
+                } catch {
+                    if CloudyKitConfig.debug {
+                        print("error decoding: \(error.localizedDescription)")
+                        print("data: \(String(data: data, encoding: .utf8) ?? "no data")")
+                    }
+                    completionHandler(nil, error)
+                }
+            }
+        }
+    }
+    
     internal func saveTask(database: CKDatabase, environment: CloudyKitConfig.Environment, record: CKRecord, completionHandler: @escaping (CKRecord?, Error?) -> Void) -> NetworkSessionDataTask {
         let now = Date()
         let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/modify"
@@ -168,5 +193,33 @@ extension NetworkSession {
             request.httpBody = data
         }
         return self.recordResponseTask(with: request, completionHandler: completionHandler)
+    }
+    
+    internal func deleteTask(database: CKDatabase, environment: CloudyKitConfig.Environment, recordID: CKRecord.ID, completionHandler: @escaping (CKRecord.ID?, Error?) -> Void) -> NetworkSessionDataTask {
+        let now = Date()
+        let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/modify"
+        var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(CloudyKitConfig.serverKeyID, forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID")
+        request.addValue(CloudyKitConfig.dateFormatter.string(from: now), forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date")
+        let recordDictionary = CKWSRecordDictionary(recordName: recordID.recordName,
+                                                    recordType: nil,
+                                                    recordChangeTag: nil,
+                                                    fields: nil,
+                                                    created: nil)
+        let operationType: CKWSRecordOperation.OperationType = .delete
+        let operation = CKWSRecordOperation(operationType: operationType,
+                                            desiredKeys: nil,
+                                            record: recordDictionary)
+        let modifyRequest = CKWSModifyRecordRequest(operations: [operation])
+        if let data = try? CloudyKitConfig.encoder.encode(modifyRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
+            let signature = CKRequestSignature(data: data, date: now, path: path, privateKey: privateKey)
+            if let signatureValue = try? signature.sign() {
+                request.addValue(signatureValue, forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1")
+            }
+            request.httpBody = data
+        }
+        return self.recordIDResponseTask(with: request, completionHandler: completionHandler)
     }
 }
