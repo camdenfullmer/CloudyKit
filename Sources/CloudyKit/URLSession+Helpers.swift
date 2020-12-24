@@ -208,7 +208,7 @@ extension NetworkSession {
                                                     recordChangeTag: nil,
                                                     fields: nil,
                                                     created: nil)
-        let operationType: CKWSRecordOperation.OperationType = .delete
+        let operationType: CKWSRecordOperation.OperationType = .forceDelete
         let operation = CKWSRecordOperation(operationType: operationType,
                                             desiredKeys: nil,
                                             record: recordDictionary)
