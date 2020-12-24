@@ -7,6 +7,7 @@
 
 import Foundation
 #if os(Linux)
+import FoundationNetworking
 import OpenCombine
 #else
 import Combine
@@ -89,6 +90,14 @@ public class CKDatabase {
             })
     }
 }
+
+// ???: Not really sure why this needs to be here, but on Linux will get the following error:
+//      error: instance method 'decode(type:decoder:)' requires that 'JSONDecoder' conform to
+//      'TopLevelDecoder'
+//      .tryMap { output in
+#if os(Linux)
+extension JSONDecoder: TopLevelDecoder {}
+#endif
 
 extension CKDatabase.Scope: CustomStringConvertible {
     public var description: String {
