@@ -37,6 +37,13 @@ extension NetworkSession {
                 completionHandler(nil, CKError(code: .internalError))
                 return
             }
+            if let data = data {
+                if CloudyKitConfig.debug {
+                    print("=== CloudKit Web Services Response Data ===")
+                    print("\(String(data: data, encoding: .utf8) ?? "invalid data")")
+                    print("===========================================")
+                }
+            }
             guard response.statusCode == 200 else {
                 if let data = data {
                     if let ckwsError = try? CloudyKitConfig.decoder.decode(CKWSErrorResponse.self, from: data) {
@@ -101,10 +108,6 @@ extension NetworkSession {
                     }
                     completionHandler(record, nil)
                 } catch {
-                    if CloudyKitConfig.debug {
-                        print("error decoding: \(error.localizedDescription)")
-                        print("data: \(String(data: data, encoding: .utf8) ?? "no data")")
-                    }
                     completionHandler(nil, error)
                 }
             }
@@ -149,8 +152,11 @@ extension NetworkSession {
             switch $0 {
             case let value as Int: return CKWSRecordFieldValue(value: .number(value), type: nil)
             case let value as String: return CKWSRecordFieldValue(value: .string(value), type: nil)
-            // TODO: Add debug message here.
-            default: return nil
+            default:
+                if CloudyKitConfig.debug {
+                    print("unable to handle type: \(type(of: $0)) (\($0))")
+                }
+                return nil
             }
         }
         let recordDictionary = CKWSRecordDictionary(recordName: record.recordID.recordName,
