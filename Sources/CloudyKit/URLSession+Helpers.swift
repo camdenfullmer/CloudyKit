@@ -9,6 +9,7 @@ import Foundation
 #if os(Linux)
 import FoundationNetworking
 import OpenCombine
+import OpenCombineFoundation
 #else
 import Combine
 #endif
@@ -33,67 +34,6 @@ extension URLSession: NetworkSession {
             .eraseToAnyPublisher()
     }
 }
-
-#if os(Linux)
-extension URLSession {
-    
-    private class DataTaskSubscription<S: Subscriber>: Subscription where S.Input == (data: Data, response: URLResponse), S.Failure == Error {
-        private let session: URLSession
-        private let request: URLRequest
-        private var subscriber: S?
-        
-        init(session: URLSession, request: URLRequest, subscriber: S) {
-            self.session = session
-            self.request = request
-            self.sendRequest()
-        }
-        
-        func request(_ demand: Subscribers.Demand) {
-            //TODO: - Optionaly Adjust The Demand
-        }
-        
-        func cancel() {
-            subscriber = nil
-        }
-        
-        private func sendRequest() {
-            guard let subscriber = subscriber else { return }
-            self.session.dataTask(with: request) { (data, response, error) in
-                if let data = data, let response = response {
-                    _ = subscriber.receive((data, response))
-                } else if let error = error {
-                    subscriber.receive(completion: Subscribers.Completion.failure(error))
-                }
-            }.resume()
-        }
-    }
-
-    struct DataTaskPublisher: Publisher {
-        typealias Output = (data: Data, response: URLResponse)
-        typealias Failure = Error
-        
-        private let request: URLRequest
-        private let session: URLSession
-        
-        init(session: URLSession, request: URLRequest) {
-            self.session = session
-            self.request = request
-        }
-        
-        func receive<S: Subscriber>(subscriber: S) where DataTaskPublisher.Failure == S.Failure, DataTaskPublisher.Output == S.Input {
-            let subscription = DataTaskSubscription(session: self.session,
-                                                    request: self.request,
-                                                    subscriber: subscriber)
-            subscriber.receive(subscription: subscription)
-        }
-    }
-    
-    func dataTaskPublisher(for request: URLRequest) -> DataTaskPublisher {
-        return DataTaskPublisher(session: self, request: request)
-    }
-    
-}
-#endif
 
 extension URLSessionDataTask: NetworkSessionDataTask { }
 
