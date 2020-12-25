@@ -58,22 +58,14 @@ enum CKWSValue: Codable {
     }
     
     func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
         switch self {
         case .string(let value):
-            var container = encoder.singleValueContainer()
             try container.encode(value)
         case .number(let value):
-            var container = encoder.singleValueContainer()
             try container.encode(value)
-        case .asset(_):
-            var container = encoder.unkeyedContainer()
-            let assetDictionary = CKWSAssetDictionary(fileChecksum: "",
-                                                      size: 0,
-                                                      referenceChecksum: nil,
-                                                      wrappingKey: nil,
-                                                      receipt: "",
-                                                      downloadURL: nil)
-            try container.encode(assetDictionary)
+        case .asset(let value):
+            try container.encode(value)
         }
     }
 }
