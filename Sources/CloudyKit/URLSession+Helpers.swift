@@ -88,7 +88,7 @@ extension NetworkSession {
                     case .string(let value): record[fieldName] = value
                     case .number(let value): record[fieldName] = value
                     case .asset(let value):
-                        guard let downloadURL = value.downloadURL, let fileURL = URL(string: downloadURL) else {
+                        guard let downloadURL = value.downloadURL, let fileURL = URL(string: downloadURL.replacingOccurrences(of: "${f}", with: value.fileChecksum)) else {
                             throw CKError(code: .internalError)
                         }
                         record[fieldName] = CKAsset(fileURL: fileURL)

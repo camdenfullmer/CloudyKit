@@ -100,7 +100,7 @@ final class CKDatabaseTests: XCTestCase {
                     "profilePhoto" : {
                         "value" : {
                             "fileChecksum" : "\(fileChecksum)",
-                            "downloadURL" : "https://s3.apple.com/profilePhoto",
+                            "downloadURL" : "https://s3.apple.com/profilePhoto/${f}",
                             "size" : 123
                         }
                     }
