@@ -45,6 +45,12 @@ extension NetworkSession {
                     throw CKError(code: .internalError)
                 }
                 if CloudyKitConfig.debug {
+                    print("=== CloudKit Web Services Request ===")
+                    print("URL: \(request.url?.absoluteString ?? "no url")")
+                    print("Method: \(request.httpMethod ?? "no method")")
+                    print("Data:")
+                    print("\(String(data: request.httpBody ?? Data(), encoding: .utf8) ?? "no data")")
+                    print("======================================")
                     print("=== CloudKit Web Services Response ===")
                     print("Status Code: \(response.statusCode)")
                     print("Data:")
