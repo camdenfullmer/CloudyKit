@@ -99,10 +99,7 @@ final class CKDatabaseTests: XCTestCase {
                 "fields": {
                     "profilePhoto" : {
                         "value" : {
-                            "wrappingKey" : "\(wrappingKey)",
                             "fileChecksum" : "\(fileChecksum)",
-                            "receipt" : "\(receipt)",
-                            "referenceChecksum" : "\(referenceChecksum)",
                             "downloadURL" : "https://s3.apple.com/profilePhoto",
                             "size" : 123
                         }

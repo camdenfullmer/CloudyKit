@@ -34,7 +34,7 @@ struct CKWSAssetDictionary: Codable {
     let size: Int
     let referenceChecksum: String?
     let wrappingKey: String?
-    let receipt: String
+    let receipt: String?
     let downloadURL: String?
 }
 
