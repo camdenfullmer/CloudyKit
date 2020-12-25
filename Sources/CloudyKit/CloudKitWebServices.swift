@@ -29,7 +29,7 @@ struct CKWSResponseCreated: Codable {
     let timestamp: Int
 }
 
-struct CKWSAssetDictionary: Encodable {
+struct CKWSAssetDictionary: Codable {
     let fileChecksum: String
     let size: Int
     let referenceChecksum: String?
@@ -41,7 +41,7 @@ struct CKWSAssetDictionary: Encodable {
 enum CKWSValue: Codable {
     case string(String)
     case number(Int)
-    case asset(CKAsset)
+    case asset(CKWSAssetDictionary)
     
     init(from decoder: Decoder) throws {
         // TODO: This is not going to work for references or booleans.
@@ -50,6 +50,8 @@ enum CKWSValue: Codable {
             self = .string(value)
         } else if let value = try? container.decode(Int.self) {
             self = .number(value)
+        } else if let value = try? container.decode(CKWSAssetDictionary.self) {
+            self = .asset(value)
         } else {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "unable to decode value from container: \(container)")
         }
@@ -131,6 +133,10 @@ struct CKWSTokenResponseDictionary: Decodable {
     let url: String
 }
 
+struct CKWSTokenResponse: Decodable {
+    let tokens: [CKWSTokenResponseDictionary]
+}
+
 struct CKWSAssetFieldDictionary: Encodable {
     let recordName: String
     let recordType: String
@@ -139,4 +145,8 @@ struct CKWSAssetFieldDictionary: Encodable {
 
 struct CKWSAssetTokenRequest: Encodable {
     let tokens: [CKWSAssetFieldDictionary]
+}
+
+struct CKWSAssetUploadResponse: Decodable {
+    let singleFile: CKWSAssetDictionary
 }

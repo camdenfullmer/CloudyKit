@@ -17,7 +17,9 @@ final class CKDatabaseTests: XCTestCase {
     
     override func setUp() {
         let session = MockedNetworkSession()
-        session.mockedResponse = HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:])
+        session.responseHandler = { _ in
+            return (Data(), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
         CloudyKitConfig.urlSession = session
         CloudyKitConfig.serverKeyID = "1234567890"
         CloudyKitConfig.serverPrivateKey = try! CKPrivateKey(data: Data.loadAsset(name: "eckey.pem"))
@@ -45,7 +47,9 @@ final class CKDatabaseTests: XCTestCase {
         ]
 }
 """
-        self.mockedSession?.mockedData = response.data(using: .utf8)
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
         
         let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
         let database = container.publicDatabase
@@ -57,11 +61,11 @@ final class CKDatabaseTests: XCTestCase {
         XCTAssertNil(record.creationDate)
         let expectation = self.expectation(description: "completion handler called")
         database.save(record) { (record, error) in
-            XCTAssertEqual("POST", self.mockedSession?.request?.httpMethod)
-            XCTAssertNotNil(self.mockedSession?.request?.httpBody)
-            XCTAssertEqual("1234567890", self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
-            XCTAssertNotNil(self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
-            XCTAssertNotNil(self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
+            XCTAssertEqual("POST", self.mockedSession?.requests.first?.httpMethod)
+            XCTAssertNotNil(self.mockedSession?.requests.first?.httpBody)
+            XCTAssertEqual("1234567890", self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
             XCTAssertNil(error)
             XCTAssertNotNil(record)
             XCTAssertEqual("Users", record?.recordType)
@@ -70,6 +74,91 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual("Chen", record?["lastName"] as? String)
             XCTAssertEqual(18, record?["width"] as? Int)
             XCTAssertEqual(24, record?["height"] as? Int)
+            XCTAssertNotNil(record?.creationDate)
+            XCTAssertNotNil(record?.recordChangeTag)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
+    
+    func testSaveNewRecordWithAsset() {
+        let wrappingKey = UUID().uuidString
+        let fileChecksum = UUID().uuidString
+        let receipt = UUID().uuidString
+        let referenceChecksum = UUID().uuidString
+        let recordResponse = """
+{
+        "records": [
+            {
+                "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+                "recordType": "Users",
+                "recordChangeTag": "\(UUID().uuidString)",
+                "created": {
+                    "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
+                },
+                "fields": {
+                    "profilePhoto" : {
+                        "value" : {
+                            "wrappingKey" : "\(wrappingKey)",
+                            "fileChecksum" : "\(fileChecksum)",
+                            "receipt" : "\(receipt)",
+                            "referenceChecksum" : "\(referenceChecksum)",
+                            "downloadURL" : "https://s3.apple.com/profilePhoto",
+                            "size" : 123
+                        }
+                    }
+                }
+            }
+        ]
+}
+"""
+        let assetTokenResponse = """
+{
+  "tokens":[{
+        "recordName": "\(UUID().uuidString)",
+        "fieldName": "profilePhoto",
+        "url": "https://s3.apple.com/profilePhoto"
+    }]
+}
+"""
+        let assetUploadDataResponse = """
+{
+  "singleFile" :{
+        "wrappingKey" : "\(wrappingKey)",
+        "fileChecksum" : "\(fileChecksum)",
+        "receipt" : "\(receipt)",
+        "referenceChecksum" : "\(referenceChecksum)",
+        "size" : 123
+    }
+}
+"""
+        
+        mockedSession?.responseHandler = { request in
+            if let url = request.url?.absoluteString {
+                if url.contains("records/modify") {
+                    return (recordResponse.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+                } else if url.contains("assets/upload") {
+                    return (assetTokenResponse.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+                } else if url.contains("https://s3.apple.com/profilePhoto") {
+                    return (assetUploadDataResponse.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+                }
+            }
+            return (Data(), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 404, httpVersion: nil, headerFields: [:]), nil)
+        }
+        
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let record = CloudyKit.CKRecord(recordType: "Users")
+        let asset = CloudyKit.CKAsset(fileURL: assetURL(name: "cloudkit-128x128.png")!)
+        record["profilePhoto"] = asset
+        XCTAssertNil(record.creationDate)
+        let expectation = self.expectation(description: "completion handler called")
+        database.save(record) { (record, error) in
+            XCTAssertNil(error)
+            XCTAssertNotNil(record)
+            XCTAssertEqual("Users", record?.recordType)
+            XCTAssertEqual("E621E1F8-C36C-495A-93FC-0C247A3E6E5F", record?.recordID.recordName)
+            XCTAssertNotNil(record?["profilePhoto"] as? CloudyKit.CKAsset)
             XCTAssertNotNil(record?.creationDate)
             XCTAssertNotNil(record?.recordChangeTag)
             expectation.fulfill()
@@ -98,18 +187,20 @@ final class CKDatabaseTests: XCTestCase {
         ]
 }
 """
-        self.mockedSession?.mockedData = response.data(using: .utf8)
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
         
         let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
         let database = container.publicDatabase
         let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
         let expectation = self.expectation(description: "completion handler called")
         database.fetch(withRecordID: recordID) { (record, error) in
-            XCTAssertEqual("POST", self.mockedSession?.request?.httpMethod)
-            XCTAssertNotNil(self.mockedSession?.request?.httpBody)
-            XCTAssertEqual("1234567890", self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
-            XCTAssertNotNil(self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
-            XCTAssertNotNil(self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
+            XCTAssertEqual("POST", self.mockedSession?.requests.first?.httpMethod)
+            XCTAssertNotNil(self.mockedSession?.requests.first?.httpBody)
+            XCTAssertEqual("1234567890", self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
             XCTAssertNil(error)
             XCTAssertNotNil(record)
             XCTAssertEqual("Users", record?.recordType)
@@ -135,18 +226,20 @@ final class CKDatabaseTests: XCTestCase {
         ]
 }
 """
-        self.mockedSession?.mockedData = response.data(using: .utf8)
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
         
         let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
         let database = container.publicDatabase
         let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
         let expectation = self.expectation(description: "completion handler called")
         database.delete(withRecordID: recordID) { (recordID, error) in
-            XCTAssertEqual("POST", self.mockedSession?.request?.httpMethod)
-            XCTAssertNotNil(self.mockedSession?.request?.httpBody)
-            XCTAssertEqual("1234567890", self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
-            XCTAssertNotNil(self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
-            XCTAssertNotNil(self.mockedSession?.request?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
+            XCTAssertEqual("POST", self.mockedSession?.requests.first?.httpMethod)
+            XCTAssertNotNil(self.mockedSession?.requests.first?.httpBody)
+            XCTAssertEqual("1234567890", self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
             XCTAssertNil(error)
             XCTAssertNotNil(recordID)
             XCTAssertEqual("E621E1F8-C36C-495A-93FC-0C247A3E6E5F", recordID?.recordName)
@@ -163,8 +256,9 @@ final class CKDatabaseTests: XCTestCase {
     "reason" : "BadRequestException: missing required field 'recordChangeTag'"
 }
 """
-        self.mockedSession?.mockedData = response.data(using: .utf8)
-        self.mockedSession?.mockedResponse = HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 400, httpVersion: nil, headerFields: nil)
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 400, httpVersion: nil, headerFields: [:]), nil)
+        }
         
         let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
         let database = container.publicDatabase
@@ -187,7 +281,9 @@ final class CKDatabaseTests: XCTestCase {
     "reason" : "could not decode asset object"
 }
 """
-        self.mockedSession?.mockedData = response.data(using: .utf8)        
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
         let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
         let database = container.publicDatabase
         let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")

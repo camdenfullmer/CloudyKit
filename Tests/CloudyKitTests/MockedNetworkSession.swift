@@ -25,26 +25,24 @@ class MockedURLSessionDataSubscription<S: Subscriber>: Subscription where S.Inpu
         self.response = response
         self.error = error
         self.subscriber = subscriber
-        sendRequest()
     }
     
     func request(_ demand: Subscribers.Demand) {
-        //TODO: - Optionaly Adjust The Demand
+        if demand > 0 {
+            guard let subscriber = self.subscriber else { return }
+            if let error = error {
+                subscriber.receive(completion: .failure(error))
+            } else if let data = self.data, let response = self.response {
+                _ = subscriber.receive((data, response))
+                subscriber.receive(completion: .finished)
+            } else {
+                subscriber.receive(completion: .failure(CloudyKit.CKError(code: .internalError)))
+            }
+        }
     }
     
     func cancel() {
-        subscriber = nil
-    }
-    
-    private func sendRequest() {
-        guard let subscriber = subscriber else { return }
-        if let error = error {
-            subscriber.receive(completion: .failure(error))
-        } else if let data = self.data, let response = self.response {
-            _ = subscriber.receive((data, response))
-        } else {
-            subscriber.receive(completion: .failure(CloudyKit.CKError(code: .internalError)))
-        }
+        self.subscriber = nil
     }
 }
 
@@ -86,23 +84,21 @@ class MockedURLSessionDataTask: NetworkSessionDataTask {
 
 class MockedNetworkSession: NetworkSession {
     
-    var request: URLRequest? = nil
-    var mockedData: Data? = nil
-    var mockedResponse: URLResponse? = nil
-    var mockedError: Error? = nil
+    var requests: [URLRequest] = []
+    var responseHandler: ((URLRequest) -> (Data?, URLResponse?, Error?))?
     
     func internalDataTask(with request: URLRequest, completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void) -> NetworkSessionDataTask {
-        self.request = request
+        self.requests.append(request)
+        let (data, response, error) = self.responseHandler?(request) ?? (nil, nil, nil)
         return MockedURLSessionDataTask {
-            completionHandler(self.mockedData, self.mockedResponse, self.mockedError)
+            completionHandler(data, response, error)
         }
     }
     
     func internalDataTaskPublisher(for request: URLRequest) -> AnyPublisher<(data: Data, response: URLResponse), Error> {
-        self.request = request
-        return MockedURLSessionDataPublisher(data: self.mockedData,
-                                             response: self.mockedResponse,
-                                             error: self.mockedError)
+        self.requests.append(request)
+        let (data, response, error) = self.responseHandler?(request) ?? (nil, nil, nil)
+        return MockedURLSessionDataPublisher(data: data, response: response, error: error)
             .eraseToAnyPublisher()
     }
 }

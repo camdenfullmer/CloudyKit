@@ -32,88 +32,83 @@ public class CKDatabase {
     
     var cancellable: AnyCancellable? = nil
     
-    public func save(_ record: CKRecord, completionHandler: @escaping (CKRecord?, Error?) -> Void) {        
-//        let assetFieldDictionarys: [CKWSAssetFieldDictionary] = record.fields.compactMap { fieldName, value in
-//            guard value is CKAsset else {
-//                return nil
-//            }
-//            return CKWSAssetFieldDictionary(recordName: record.recordID.recordName,
-//                                            recordType: record.recordType,
-//                                            fieldName: fieldName)
-//        }
-//        if assetFieldDictionarys.count > 0 {
-//            let tokenRequest = CKWSAssetTokenRequest(tokens: assetFieldDictionarys)
-//            let task = CloudyKitConfig.urlSession.requestAssetTokenTask(database: self, environment: CloudyKitConfig.environment, tokenRequest: tokenRequest) { (tokenResponse, error) in
-//                // TODO:
-//            }
-//            task.resume()
-//        }
-        self.cancellable = CloudyKitConfig.urlSession.saveTaskPublisher(database: self, environment: CloudyKitConfig.environment, record: record)
-            .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
-            .sink(receiveCompletion: { completion in
-                switch completion {
-                case .finished:
-                    break
-                case .failure(let error):
-                    completionHandler(nil, error)
-                }
-            }, receiveValue: { response in
-                guard let responseRecord = response.records.first,
-                      let recordType = responseRecord.recordType,
-                      let createdTimestamp = responseRecord.created?.timestamp else {
-                    completionHandler(nil, CKError(code: .internalError))
-                    return
-                }
-                let id = CKRecord.ID(recordName: responseRecord.recordName)
-                let record = CKRecord(recordType: recordType, recordID: id)
-                record.creationDate = Date(timeIntervalSince1970: TimeInterval(createdTimestamp) / 1000)
-                record.recordChangeTag = responseRecord.recordChangeTag
-                for (fieldName, fieldValue) in responseRecord.fields ?? [:] {
-                    switch fieldValue.value {
-                    case .string(let value): record[fieldName] = value
-                    case .number(let value): record[fieldName] = value
-                    case .asset(_): fatalError("not supported")
+    public func save(_ record: CKRecord, completionHandler: @escaping (CKRecord?, Error?) -> Void) {
+        
+        // Create publisher for any assets we need to upload.
+        let assets = record.fields.compactMapValues { $0 as? CKAsset }
+        if assets.count > 0 {
+            let dictionarys: [CKWSAssetFieldDictionary] = assets.compactMap { fieldName, value in
+                return CKWSAssetFieldDictionary(recordName: record.recordID.recordName,
+                                                recordType: record.recordType,
+                                                fieldName: fieldName)
+            }
+            let tokenRequest = CKWSAssetTokenRequest(tokens: dictionarys)
+            let publisher = CloudyKitConfig.urlSession.requestAssetTokenTaskPublisher(database: self,
+                                                                                      environment: CloudyKitConfig.environment,
+                                                                                      tokenRequest: tokenRequest)
+            self.cancellable = publisher.decode(type: CKWSTokenResponse.self, decoder: CloudyKitConfig.decoder)
+                .flatMap { tokenResponse -> AnyPublisher<(String, CKWSAssetUploadResponse), Error> in
+                    let publishers: [AnyPublisher<(String, CKWSAssetUploadResponse), Error>] = tokenResponse.tokens.compactMap { token in
+                        guard let tokenURL = URL(string: token.url),
+                              let fileURL = assets[token.fieldName]?.fileURL,
+                              let data = try? Data(contentsOf: fileURL) else {
+                            return nil
+                        }
+                        var request = URLRequest(url: tokenURL)
+                        request.httpMethod = "POST"
+                        request.httpBody = data
+                        return CloudyKitConfig.urlSession.successfulDataTaskPublisher(for: request)
+                            .decode(type: CKWSAssetUploadResponse.self, decoder: CloudyKitConfig.decoder)
+                            .map { return (token.fieldName, $0) }
+                            .eraseToAnyPublisher()
                     }
+                    // TODO: OpenCombine does not yet support Publishers.MergeMany. Only uploading
+                    //       the first asset.
+                    //  return Publishers.MergeMany(publishers).collect().eraseToAnyPublisher()
+                    return publishers.first?.eraseToAnyPublisher() ?? Empty<(String, CKWSAssetUploadResponse), Error>().eraseToAnyPublisher()
+                }.flatMap { assetUploadResponses in
+                    return CloudyKitConfig.urlSession.saveTaskPublisher(database: self,
+                                                                        environment: CloudyKitConfig.environment,
+                                                                        record: record,
+                                                                        assetUploadResponses: [assetUploadResponses])
+                }.sink { completion in
+                    switch completion {
+                    case .failure(let error): completionHandler(nil, error)
+                    default: break
+                    }
+                } receiveValue: { record in
+                    completionHandler(record, nil)
                 }
-                completionHandler(record, nil)
-            })
+        } else {
+            self.cancellable = CloudyKitConfig.urlSession.saveTaskPublisher(database: self, environment: CloudyKitConfig.environment, record: record)
+                .sink(receiveCompletion: { completion in
+                    switch completion {
+                    case .finished:
+                        break
+                    case .failure(let error):
+                        completionHandler(nil, error)
+                    }
+                }, receiveValue: { record in
+                    completionHandler(record, nil)
+                })
+        }
     }
     
     public func fetch(withRecordID recordID: CKRecord.ID, completionHandler: @escaping (CKRecord?, Error?) -> Void) {
         self.cancellable = CloudyKitConfig.urlSession.fetchTaskPublisher(database: self, environment: CloudyKitConfig.environment, recordID: recordID)
-            .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
             .sink(receiveCompletion: { completion in
                 switch completion {
-                case .finished:
-                    break
                 case .failure(let error):
                     completionHandler(nil, error)
+                case .finished: break
                 }
-            }, receiveValue: { response in
-                guard let responseRecord = response.records.first,
-                      let recordType = responseRecord.recordType,
-                      let createdTimestamp = responseRecord.created?.timestamp else {
-                    completionHandler(nil, CKError(code: .internalError))
-                    return
-                }
-                let id = CKRecord.ID(recordName: responseRecord.recordName)
-                let record = CKRecord(recordType: recordType, recordID: id)
-                record.creationDate = Date(timeIntervalSince1970: TimeInterval(createdTimestamp) / 1000)
-                record.recordChangeTag = responseRecord.recordChangeTag
-                for (fieldName, fieldValue) in responseRecord.fields ?? [:] {
-                    switch fieldValue.value {
-                    case .string(let value): record[fieldName] = value
-                    case .number(let value): record[fieldName] = value
-                    case .asset(_): fatalError("not supported")
-                    }
-                }
+            }, receiveValue: { record in
                 completionHandler(record, nil)
             })
     }
     
     public func delete(withRecordID recordID: CKRecord.ID, completionHandler: @escaping (CKRecord.ID?, Error?) -> Void) {
         self.cancellable = CloudyKitConfig.urlSession.deleteTaskPublisher(database: self, environment: CloudyKitConfig.environment, recordID: recordID)
-            .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
             .sink(receiveCompletion: { completion in
                 switch completion {
                 case .finished:

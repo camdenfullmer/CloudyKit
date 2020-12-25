@@ -64,7 +64,35 @@ extension NetworkSession {
             }.eraseToAnyPublisher()
     }
     
-    internal func saveTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, record: CKRecord) -> AnyPublisher<Data, Error> {
+    internal func recordTaskPublisher(for request: URLRequest) -> AnyPublisher<CKRecord, Error> {
+        return self.successfulDataTaskPublisher(for: request)
+            .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
+            .tryMap { response in
+                guard let responseRecord = response.records.first,
+                      let recordType = responseRecord.recordType,
+                      let createdTimestamp = responseRecord.created?.timestamp else {
+                    throw CKError(code: .internalError)
+                }
+                let id = CKRecord.ID(recordName: responseRecord.recordName)
+                let record = CKRecord(recordType: recordType, recordID: id)
+                record.creationDate = Date(timeIntervalSince1970: TimeInterval(createdTimestamp) / 1000)
+                record.recordChangeTag = responseRecord.recordChangeTag
+                for (fieldName, fieldValue) in responseRecord.fields ?? [:] {
+                    switch fieldValue.value {
+                    case .string(let value): record[fieldName] = value
+                    case .number(let value): record[fieldName] = value
+                    case .asset(let value):
+                        guard let downloadURL = value.downloadURL, let fileURL = URL(string: downloadURL) else {
+                            throw CKError(code: .internalError)
+                        }
+                        record[fieldName] = CKAsset(fileURL: fileURL)
+                    }
+                }
+                return record
+            }.eraseToAnyPublisher()
+    }
+    
+    internal func saveTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, record: CKRecord, assetUploadResponses: [(String, CKWSAssetUploadResponse)] = []) -> AnyPublisher<CKRecord, Error> {
         let now = Date()
         let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/modify"
         var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
@@ -73,16 +101,26 @@ extension NetworkSession {
         request.addValue(CloudyKitConfig.serverKeyID, forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID")
         request.addValue(CloudyKitConfig.dateFormatter.string(from: now), forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date")
         
-        let fields: [String:CKWSRecordFieldValue] = record.fields.compactMapValues {
-            switch $0 {
-            case let value as Int: return CKWSRecordFieldValue(value: .number(value), type: nil)
-            case let value as String: return CKWSRecordFieldValue(value: .string(value), type: nil)
-            case let value as CKAsset: return CKWSRecordFieldValue(value: .asset(value), type: nil)
+        var fields: [String:CKWSRecordFieldValue] = [:]
+        for (fieldName, value) in record.fields {
+            switch value {
+            case let value as Int:
+                fields[fieldName] = CKWSRecordFieldValue(value: .number(value), type: nil)
+            case let value as String:
+                fields[fieldName] = CKWSRecordFieldValue(value: .string(value), type: nil)
+            case _ as CKAsset:
+                guard let dictionary = assetUploadResponses.first(where: { $0.0 == fieldName })?.1.singleFile else {
+                    if CloudyKitConfig.debug {
+                        print("unable to locate asset upload response for \"\(fieldName)\"")
+                    }
+                    continue
+                }
+                fields[fieldName] = CKWSRecordFieldValue(value: .asset(dictionary), type: nil)
             default:
                 if CloudyKitConfig.debug {
-                    print("unable to handle type: \(type(of: $0)) (\($0))")
+                    print("unable to handle type: \(type(of: value)) (\(value))")
                 }
-                return nil
+                continue
             }
         }
         let recordDictionary = CKWSRecordDictionary(recordName: record.recordID.recordName,
@@ -102,10 +140,10 @@ extension NetworkSession {
             }
             request.httpBody = data
         }
-        return self.successfulDataTaskPublisher(for: request)
+        return self.recordTaskPublisher(for: request)
     }
     
-    internal func fetchTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, recordID: CKRecord.ID) -> AnyPublisher<Data, Error> {
+    internal func fetchTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, recordID: CKRecord.ID) -> AnyPublisher<CKRecord, Error> {
         let now = Date()
         let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/lookup"
         var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
@@ -124,10 +162,10 @@ extension NetworkSession {
             }
             request.httpBody = data
         }
-        return self.successfulDataTaskPublisher(for: request)
+        return self.recordTaskPublisher(for: request)
     }
     
-    internal func deleteTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, recordID: CKRecord.ID) -> AnyPublisher<Data, Error> {
+    internal func deleteTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, recordID: CKRecord.ID) -> AnyPublisher<CKWSRecordResponse, Error> {
         let now = Date()
         let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/modify"
         var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
@@ -153,6 +191,8 @@ extension NetworkSession {
             request.httpBody = data
         }
         return self.successfulDataTaskPublisher(for: request)
+            .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
+            .eraseToAnyPublisher()
     }
 
     internal func requestAssetTokenTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, tokenRequest: CKWSAssetTokenRequest) -> AnyPublisher<Data, Error> {
