@@ -140,6 +140,7 @@ final class CKDatabaseTests: XCTestCase {
                 } else if url.contains("assets/upload") {
                     return (assetTokenResponse.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
                 } else if url.contains("https://s3.apple.com/profilePhoto") {
+                    XCTAssertNotNil(request.httpBody)
                     return (assetUploadDataResponse.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
                 }
             }

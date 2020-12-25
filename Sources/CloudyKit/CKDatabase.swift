@@ -54,9 +54,16 @@ public class CKDatabase {
                               let data = try? Data(contentsOf: fileURL) else {
                             return nil
                         }
+                        let boundary = UUID().uuidString
                         var request = URLRequest(url: tokenURL)
                         request.httpMethod = "POST"
-                        request.httpBody = data
+                        request.addValue("application/json", forHTTPHeaderField: "Accept")
+                        request.addValue("multipart/form-data; boundary=----\(boundary)", forHTTPHeaderField: "Content-Type")
+                        var body = "------\(boundary)\r\n".data(using: .utf8) ?? Data()
+                        body.append("Content-Disposition: form-data; name=\"files\"; filename=\"\(fileURL.lastPathComponent)\"\r\n\r\n".data(using: .utf8) ?? Data())
+                        body.append(data)
+                        body.append("\r\n------\(boundary)--\r\n".data(using: .utf8) ?? Data())
+                        request.httpBody = body
                         return CloudyKitConfig.urlSession.successfulDataTaskPublisher(for: request)
                             .decode(type: CKWSAssetUploadResponse.self, decoder: CloudyKitConfig.decoder)
                             .map { return (token.fieldName, $0) }
