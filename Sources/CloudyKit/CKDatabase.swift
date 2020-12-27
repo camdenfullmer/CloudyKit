@@ -36,11 +36,21 @@ public class CKDatabase {
         
         // Create publisher for any assets we need to upload.
         let assets = record.fields.compactMapValues { $0 as? CKAsset }
+        let assetLists = record.fields.compactMapValues { $0 as? [CKAsset] }
         if assets.count > 0 {
-            let dictionarys: [CKWSAssetFieldDictionary] = assets.compactMap { fieldName, value in
+            var dictionarys: [CKWSAssetFieldDictionary] = assets.compactMap { fieldName, value in
                 return CKWSAssetFieldDictionary(recordName: record.recordID.recordName,
                                                 recordType: record.recordType,
                                                 fieldName: fieldName)
+            }
+            let dictionaryLists: [[CKWSAssetFieldDictionary]] = assetLists.compactMap { fieldName, value in
+                let dict = CKWSAssetFieldDictionary(recordName: record.recordID.recordName,
+                                                    recordType: record.recordType,
+                                                    fieldName: fieldName)
+                return Array(repeating: dict, count: value.count)
+            }
+            for list in dictionaryLists {
+                dictionarys.append(contentsOf: list)
             }
             let tokenRequest = CKWSAssetTokenRequest(tokens: dictionarys)
             let publisher = CloudyKitConfig.urlSession.requestAssetTokenTaskPublisher(database: self,
