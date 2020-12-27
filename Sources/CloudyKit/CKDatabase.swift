@@ -37,7 +37,7 @@ public class CKDatabase {
         // Create publisher for any assets we need to upload.
         let assets = record.fields.compactMapValues { $0 as? CKAsset }
         let assetLists = record.fields.compactMapValues { $0 as? [CKAsset] }
-        if assets.count > 0 {
+        if assets.count + assetLists.count > 0 {
             var dictionarys: [CKWSAssetFieldDictionary] = assets.compactMap { fieldName, value in
                 return CKWSAssetFieldDictionary(recordName: record.recordID.recordName,
                                                 recordType: record.recordType,
