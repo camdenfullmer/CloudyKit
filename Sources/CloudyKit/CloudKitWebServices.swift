@@ -44,6 +44,7 @@ enum CKWSValue {
     case asset(CKWSAssetDictionary)
     case assetList(Array<CKWSAssetDictionary>)
     case bytes(Data)
+    case bytesList(Array<Data>)
 }
 
 struct CKWSRecordFieldValue: Codable {
@@ -63,7 +64,8 @@ struct CKWSRecordFieldValue: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.type = try container.decodeIfPresent(String.self, forKey: .type)
-        if let value = try? container.decode(String.self, forKey: .value), let data = Data(base64Encoded: value), self.type == "BYTES" {
+        if let value = try? container.decode(String.self, forKey: .value), self.type == "BYTES" {
+            let data = Data(base64Encoded: value) ?? Data()
            self.value = .bytes(data) // TODO: Support needs to be added to check the value type before doing this.
         } else if let value = try? container.decode(String.self, forKey: .value) {
             self.value = .string(value)
@@ -73,6 +75,9 @@ struct CKWSRecordFieldValue: Codable {
             self.value = .asset(value)
         } else if let value = try? container.decode([CKWSAssetDictionary].self, forKey: .value) {
             self.value = .assetList(value)
+        } else if let value = try? container.decode([String].self, forKey: .value), self.type == "BYTES_LIST" {
+            let datas = value.compactMap({ Data(base64Encoded: $0) })
+            self.value = .bytesList(datas)
         } else {
             throw DecodingError.dataCorruptedError(forKey: .value, in: container, debugDescription: "unable to decode value from container: \(container)")
         }
@@ -91,6 +96,8 @@ struct CKWSRecordFieldValue: Codable {
             try container.encode(value, forKey: .value)
         case .bytes(let value):
             try container.encode(value.base64EncodedString(), forKey: .value)
+        case .bytesList(let value):
+            try container.encode(value.compactMap { $0.base64EncodedString() }, forKey: .value)
         }
         try container.encodeIfPresent(self.type, forKey: .type)
     }

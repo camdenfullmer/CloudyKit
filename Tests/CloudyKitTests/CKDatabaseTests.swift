@@ -42,7 +42,8 @@ final class CKDatabaseTests: XCTestCase {
                     "lastName" : {"value" : "Chen"},
                     "width": {"value": 18},
                     "height": {"value": 24},
-                    "bytes": {"value": "AAECAwQ=", "type": "BYTES"}
+                    "bytes": {"value": "AAECAwQ=", "type": "BYTES"},
+                    "bytesList": {"value": ["AAECAwQ="], "type": "BYTES_LIST"}
                 }
             }
         ]
@@ -59,6 +60,9 @@ final class CKDatabaseTests: XCTestCase {
         record["lastName"] = "Chen"
         record["width"] = 18
         record["height"] = 24
+        let data = Data([0, 1, 2, 3, 4])
+        record["bytes"] = data
+        record["bytesList"] = [data]
         XCTAssertNil(record.creationDate)
         let expectation = self.expectation(description: "completion handler called")
         database.save(record) { (record, error) in
@@ -76,6 +80,7 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual(18, record?["width"] as? Int)
             XCTAssertEqual(24, record?["height"] as? Int)
             XCTAssertEqual(Data([0, 1, 2, 3, 4]), record?["bytes"] as? Data)
+            XCTAssertEqual([Data([0, 1, 2, 3, 4])], record?["bytesList"] as? [Data])
             XCTAssertNotNil(record?.creationDate)
             XCTAssertNotNil(record?.recordChangeTag)
             expectation.fulfill()

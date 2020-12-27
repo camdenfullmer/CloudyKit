@@ -103,6 +103,8 @@ extension NetworkSession {
                         record[fieldName] = assets
                     case .bytes(let value):
                         record[fieldName] = value
+                    case .bytesList(let value):
+                        record[fieldName] = value
                     }
                 }
                 return record
@@ -139,6 +141,8 @@ extension NetworkSession {
                 fields[fieldName] = CKWSRecordFieldValue(value: .assetList(dictionaries), type: nil)
             case let value as Data:
                 fields[fieldName] = CKWSRecordFieldValue(value: .bytes(value), type: nil)
+            case let value as Array<Data>:
+                fields[fieldName] = CKWSRecordFieldValue(value: .bytesList(value), type: nil)
             default:
                 if CloudyKitConfig.debug {
                     print("unable to handle type: \(type(of: value)) (\(value))")
