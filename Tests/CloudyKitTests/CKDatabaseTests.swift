@@ -41,7 +41,8 @@ final class CKDatabaseTests: XCTestCase {
                     "firstName" : {"value" : "Mei"},
                     "lastName" : {"value" : "Chen"},
                     "width": {"value": 18},
-                    "height": {"value": 24}
+                    "height": {"value": 24},
+                    "bytes": {"value": "AAECAwQ=", "type": "BYTES"}
                 }
             }
         ]
@@ -74,6 +75,7 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual("Chen", record?["lastName"] as? String)
             XCTAssertEqual(18, record?["width"] as? Int)
             XCTAssertEqual(24, record?["height"] as? Int)
+            XCTAssertEqual(Data([0, 1, 2, 3, 4]), record?["bytes"] as? Data)
             XCTAssertNotNil(record?.creationDate)
             XCTAssertNotNil(record?.recordChangeTag)
             expectation.fulfill()

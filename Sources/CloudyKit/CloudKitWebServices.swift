@@ -38,49 +38,61 @@ struct CKWSAssetDictionary: Codable {
     let downloadURL: String?
 }
 
-enum CKWSValue: Codable {
+enum CKWSValue {
     case string(String)
     case number(Int)
     case asset(CKWSAssetDictionary)
     case assetList(Array<CKWSAssetDictionary>)
-    
-    init(from decoder: Decoder) throws {
-        // TODO: This is not going to work for references or booleans.
-        let container = try decoder.singleValueContainer()
-        if let value = try? container.decode(String.self) {
-            self = .string(value)
-        } else if let value = try? container.decode(Int.self) {
-            self = .number(value)
-        } else if let value = try? container.decode(CKWSAssetDictionary.self) {
-            self = .asset(value)
-        } else if let value = try? container.decode([CKWSAssetDictionary].self) {
-            self = .assetList(value)
-        } else {
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "unable to decode value from container: \(container)")
-        }
-    }
-    
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch self {
-        case .string(let value):
-            try container.encode(value)
-        case .number(let value):
-            try container.encode(value)
-        case .asset(let value):
-            try container.encode(value)
-        case .assetList(let value):
-            try container.encode(value)
-        }
-    }
+    case bytes(Data)
 }
 
 struct CKWSRecordFieldValue: Codable {
     let value: CKWSValue
-    let type: String?    
+    let type: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case value = "value"
+        case type = "type"
+    }
+    
     internal init(value: CKWSValue, type: String?) {
         self.value = value
         self.type = type
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.type = try container.decodeIfPresent(String.self, forKey: .type)
+        if let value = try? container.decode(String.self, forKey: .value), let data = Data(base64Encoded: value), self.type == "BYTES" {
+           self.value = .bytes(data) // TODO: Support needs to be added to check the value type before doing this.
+        } else if let value = try? container.decode(String.self, forKey: .value) {
+            self.value = .string(value)
+        } else if let value = try? container.decode(Int.self, forKey: .value) {
+            self.value = .number(value)
+        } else if let value = try? container.decode(CKWSAssetDictionary.self, forKey: .value) {
+            self.value = .asset(value)
+        } else if let value = try? container.decode([CKWSAssetDictionary].self, forKey: .value) {
+            self.value = .assetList(value)
+        } else {
+            throw DecodingError.dataCorruptedError(forKey: .value, in: container, debugDescription: "unable to decode value from container: \(container)")
+        }
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self.value {
+        case .string(let value):
+            try container.encode(value, forKey: .value)
+        case .number(let value):
+            try container.encode(value, forKey: .value)
+        case .asset(let value):
+            try container.encode(value, forKey: .value)
+        case .assetList(let value):
+            try container.encode(value, forKey: .value)
+        case .bytes(let value):
+            try container.encode(value.base64EncodedString(), forKey: .value)
+        }
+        try container.encodeIfPresent(self.type, forKey: .type)
     }
 }
 
