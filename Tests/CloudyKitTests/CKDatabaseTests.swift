@@ -43,7 +43,15 @@ final class CKDatabaseTests: XCTestCase {
                     "width": {"value": 18},
                     "height": {"value": 24},
                     "bytes": {"value": "AAECAwQ=", "type": "BYTES"},
-                    "bytesList": {"value": ["AAECAwQ="], "type": "BYTES_LIST"}
+                    "bytesList": {"value": ["AAECAwQ="], "type": "BYTES_LIST"},
+                    "double": {"value": 1.234},
+                    "reference": {
+                        "value": {
+                            "recordName": "D27CC4CB-CC49-4710-9370-418A0E97D71C",
+                            "action": "NONE"
+                        }
+                    },
+                    "dateTime": { "value": 1609034460447, "type": "DATETIME" }
                 }
             }
         ]
@@ -56,6 +64,8 @@ final class CKDatabaseTests: XCTestCase {
         let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
         let database = container.publicDatabase
         let record = CloudyKit.CKRecord(recordType: "Users")
+        let reference = CKRecord.Reference(recordID: CKRecord.ID(recordName: "D27CC4CB-CC49-4710-9370-418A0E97D71C"), action: .none)
+        let dateTime = Date(timeIntervalSince1970: TimeInterval(1609034460447) / 1000)
         record["firstName"] = "Mei"
         record["lastName"] = "Chen"
         record["width"] = 18
@@ -63,6 +73,9 @@ final class CKDatabaseTests: XCTestCase {
         let data = Data([0, 1, 2, 3, 4])
         record["bytes"] = data
         record["bytesList"] = [data]
+        record["double"] = 1.234
+        record["reference"] = reference
+        record["dateTime"] = dateTime
         XCTAssertNil(record.creationDate)
         let expectation = self.expectation(description: "completion handler called")
         database.save(record) { (record, error) in
@@ -81,6 +94,9 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual(24, record?["height"] as? Int)
             XCTAssertEqual(Data([0, 1, 2, 3, 4]), record?["bytes"] as? Data)
             XCTAssertEqual([Data([0, 1, 2, 3, 4])], record?["bytesList"] as? [Data])
+            XCTAssertEqual(1.234, record?["double"] as? Double)
+            XCTAssertEqual(reference, record?["reference"] as? CloudyKit.CKRecord.Reference)
+            XCTAssertEqual(dateTime, record?["dateTime"] as? Date)
             XCTAssertNotNil(record?.creationDate)
             XCTAssertNotNil(record?.recordChangeTag)
             expectation.fulfill()

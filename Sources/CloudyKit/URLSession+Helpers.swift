@@ -105,6 +105,15 @@ extension NetworkSession {
                         record[fieldName] = value
                     case .bytesList(let value):
                         record[fieldName] = value
+                    case .double(let value):
+                        record[fieldName] = value
+                    case .reference(let value):
+                        let recordID = CKRecord.ID(recordName: value.recordName)
+                        let action = CKRecord.Reference.Action(string: value.action)
+                        let reference = CKRecord.Reference(recordID: recordID, action: action)
+                        record[fieldName] = reference
+                    case .dateTime(let value):
+                        record[fieldName] = Date(timeIntervalSince1970: TimeInterval(value) / 1000)
                     }
                 }
                 return record
@@ -143,11 +152,15 @@ extension NetworkSession {
                 fields[fieldName] = CKWSRecordFieldValue(value: .bytes(value), type: nil)
             case let value as Array<Data>:
                 fields[fieldName] = CKWSRecordFieldValue(value: .bytesList(value), type: nil)
+            case let value as Date:
+                fields[fieldName] = CKWSRecordFieldValue(value: .dateTime(Int(value.timeIntervalSince1970 * 1000)), type: nil)
+            case let value as Double:
+                fields[fieldName] = CKWSRecordFieldValue(value: .double(value), type: nil)
+            case let value as CKRecord.Reference:
+                let dict = CKWSReferenceDictionary(recordName: value.recordID.recordName, action: value.action.stringValue)
+                fields[fieldName] = CKWSRecordFieldValue(value: .reference(dict), type: nil)
             default:
-                if CloudyKitConfig.debug {
-                    print("unable to handle type: \(type(of: value)) (\(value))")
-                }
-                continue
+                fatalError("unable to handle \(value) of type \(type(of: value))")
             }
         }
         let recordDictionary = CKWSRecordDictionary(recordName: record.recordID.recordName,

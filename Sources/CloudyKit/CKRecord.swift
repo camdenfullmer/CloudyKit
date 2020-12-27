@@ -18,6 +18,39 @@ public class CKRecord {
         }
     }
     
+    public class Reference {
+        public enum Action: Int {
+            case none = 0
+            case deleteSelf = 1
+            
+            internal init(string: String) {
+                switch string {
+                case "DELETE_SELF": self = .deleteSelf
+                default: self = .none
+                }
+            }
+            
+            internal var stringValue: String {
+                switch self {
+                case .deleteSelf: return "DELETE_SELF"
+                case .none: return "NONE"
+                }
+            }
+        }
+        
+        public let recordID: ID
+        public let action: Action
+        
+        public convenience init(record: CKRecord, action: CKRecord.Reference.Action) {
+            self.init(recordID: record.recordID, action: action)
+        }
+        
+        public init(recordID: CKRecord.ID, action: CKRecord.Reference.Action) {
+            self.recordID = recordID
+            self.action = action
+        }
+    }
+    
     public let recordID: ID
     public let recordType: RecordType
     public internal(set) var recordChangeTag: String?
@@ -42,4 +75,16 @@ public class CKRecord {
         }
     }
     
+}
+
+extension CKRecord.ID: Equatable {
+    public static func == (lhs: CKRecord.ID, rhs: CKRecord.ID) -> Bool {
+        return lhs.recordName == rhs.recordName
+    }
+}
+
+extension CKRecord.Reference: Equatable {
+    public static func == (lhs: CKRecord.Reference, rhs: CKRecord.Reference) -> Bool {
+        return lhs.recordID == rhs.recordID && lhs.action == rhs.action
+    }
 }
