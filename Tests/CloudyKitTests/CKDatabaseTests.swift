@@ -196,7 +196,7 @@ final class CKDatabaseTests: XCTestCase {
 {
   "tokens":[{
         "recordName": "\(UUID().uuidString)",
-        "fieldName": "profilePhoto",
+        "fieldName": "profilePhotos",
         "url": "https://s3.apple.com/profilePhoto"
     }]
 }
@@ -240,6 +240,7 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual("Users", record?.recordType)
             XCTAssertEqual("E621E1F8-C36C-495A-93FC-0C247A3E6E5F", record?.recordID.recordName)
             XCTAssertNotNil(record?["profilePhotos"] as? [CloudyKit.CKAsset])
+            XCTAssertEqual(1, (record?["profilePhotos"] as? [CloudyKit.CKAsset])?.count ?? 0)
             XCTAssertNotNil(record?.creationDate)
             XCTAssertNotNil(record?.recordChangeTag)
             expectation.fulfill()

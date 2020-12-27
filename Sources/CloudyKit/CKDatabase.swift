@@ -58,12 +58,20 @@ public class CKDatabase {
                                                                                       tokenRequest: tokenRequest)
             self.cancellable = publisher.decode(type: CKWSTokenResponse.self, decoder: CloudyKitConfig.decoder)
                 .flatMap { tokenResponse -> AnyPublisher<[(String, CKWSAssetUploadResponse)], Error> in
+                    var usedFileURLs: [URL] = []
                     let publishers: [AnyPublisher<(String, CKWSAssetUploadResponse), Error>] = tokenResponse.tokens.compactMap { token in
+                        let assetListURL = assetLists[token.fieldName]?.first(where: {
+                            guard let fileURL = $0.fileURL else {
+                                return false
+                            }
+                            return !usedFileURLs.contains(fileURL)
+                        })?.fileURL
                         guard let tokenURL = URL(string: token.url),
-                              let fileURL = assets[token.fieldName]?.fileURL,
+                              let fileURL = assets[token.fieldName]?.fileURL ?? assetListURL,
                               let data = try? Data(contentsOf: fileURL) else {
                             return nil
                         }
+                        usedFileURLs.append(fileURL)
                         let boundary = UUID().uuidString
                         var request = URLRequest(url: tokenURL)
                         request.httpMethod = "POST"
