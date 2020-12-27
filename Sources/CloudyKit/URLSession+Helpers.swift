@@ -92,6 +92,15 @@ extension NetworkSession {
                             throw CKError(code: .internalError)
                         }
                         record[fieldName] = CKAsset(fileURL: fileURL)
+                    case .assetList(let value):
+                        var assets: [CKAsset] = []
+                        for dict in value {
+                            guard let downloadURL = dict.downloadURL, let fileURL = URL(string: downloadURL.replacingOccurrences(of: "${f}", with: dict.fileChecksum)) else {
+                                throw CKError(code: .internalError)
+                            }
+                            assets.append(CKAsset(fileURL: fileURL))
+                        }
+                        record[fieldName] = assets
                     }
                 }
                 return record
@@ -122,6 +131,10 @@ extension NetworkSession {
                     continue
                 }
                 fields[fieldName] = CKWSRecordFieldValue(value: .asset(dictionary), type: nil)
+            case _ as Array<CKAsset>:
+                let dictionaries = assetUploadResponses.filter({ $0.0 == fieldName })
+                    .map { $0.1.singleFile }
+                fields[fieldName] = CKWSRecordFieldValue(value: .assetList(dictionaries), type: nil)
             default:
                 if CloudyKitConfig.debug {
                     print("unable to handle type: \(type(of: value)) (\(value))")

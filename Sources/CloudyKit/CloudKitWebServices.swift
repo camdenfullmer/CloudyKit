@@ -42,6 +42,7 @@ enum CKWSValue: Codable {
     case string(String)
     case number(Int)
     case asset(CKWSAssetDictionary)
+    case assetList(Array<CKWSAssetDictionary>)
     
     init(from decoder: Decoder) throws {
         // TODO: This is not going to work for references or booleans.
@@ -52,6 +53,8 @@ enum CKWSValue: Codable {
             self = .number(value)
         } else if let value = try? container.decode(CKWSAssetDictionary.self) {
             self = .asset(value)
+        } else if let value = try? container.decode([CKWSAssetDictionary].self) {
+            self = .assetList(value)
         } else {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "unable to decode value from container: \(container)")
         }
@@ -65,6 +68,8 @@ enum CKWSValue: Codable {
         case .number(let value):
             try container.encode(value)
         case .asset(let value):
+            try container.encode(value)
+        case .assetList(let value):
             try container.encode(value)
         }
     }

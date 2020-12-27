@@ -164,6 +164,89 @@ final class CKDatabaseTests: XCTestCase {
         self.wait(for: [expectation], timeout: 1)
     }
     
+    func testSaveNewRecordWithAssetList() {
+        let wrappingKey = UUID().uuidString
+        let fileChecksum = UUID().uuidString
+        let receipt = UUID().uuidString
+        let referenceChecksum = UUID().uuidString
+        let recordResponse = """
+{
+        "records": [
+            {
+                "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+                "recordType": "Users",
+                "recordChangeTag": "\(UUID().uuidString)",
+                "created": {
+                    "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
+                },
+                "fields": {
+                    "profilePhotos" : {
+                        "value" : [{
+                            "fileChecksum" : "\(fileChecksum)",
+                            "downloadURL" : "https://s3.apple.com/profilePhoto/${f}",
+                            "size" : 123
+                        }]
+                    }
+                }
+            }
+        ]
+}
+"""
+        let assetTokenResponse = """
+{
+  "tokens":[{
+        "recordName": "\(UUID().uuidString)",
+        "fieldName": "profilePhoto",
+        "url": "https://s3.apple.com/profilePhoto"
+    }]
+}
+"""
+        let assetUploadDataResponse = """
+{
+  "singleFile" :{
+        "wrappingKey" : "\(wrappingKey)",
+        "fileChecksum" : "\(fileChecksum)",
+        "receipt" : "\(receipt)",
+        "referenceChecksum" : "\(referenceChecksum)",
+        "size" : 123
+    }
+}
+"""
+        
+        mockedSession?.responseHandler = { request in
+            if let url = request.url?.absoluteString {
+                if url.contains("records/modify") {
+                    return (recordResponse.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+                } else if url.contains("assets/upload") {
+                    return (assetTokenResponse.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+                } else if url.contains("https://s3.apple.com/profilePhoto") {
+                    XCTAssertNotNil(request.httpBody)
+                    return (assetUploadDataResponse.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+                }
+            }
+            return (Data(), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 404, httpVersion: nil, headerFields: [:]), nil)
+        }
+        
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let record = CloudyKit.CKRecord(recordType: "Users")
+        let asset = CloudyKit.CKAsset(fileURL: assetURL(name: "cloudkit-128x128.png")!)
+        record["profilePhotos"] = [asset]
+        XCTAssertNil(record.creationDate)
+        let expectation = self.expectation(description: "completion handler called")
+        database.save(record) { (record, error) in
+            XCTAssertNil(error)
+            XCTAssertNotNil(record)
+            XCTAssertEqual("Users", record?.recordType)
+            XCTAssertEqual("E621E1F8-C36C-495A-93FC-0C247A3E6E5F", record?.recordID.recordName)
+            XCTAssertNotNil(record?["profilePhotos"] as? [CloudyKit.CKAsset])
+            XCTAssertNotNil(record?.creationDate)
+            XCTAssertNotNil(record?.recordChangeTag)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
+    
     func testFetchRecord() {
         let response = """
 {
