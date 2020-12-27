@@ -51,7 +51,7 @@ final class CKDatabaseTests: XCTestCase {
                             "action": "NONE"
                         }
                     },
-                    "dateTime": { "value": 1609034460447, "type": "DATETIME" }
+                    "dateTime": { "value": 1609034460447, "type": "TIMESTAMP" }
                 }
             }
         ]

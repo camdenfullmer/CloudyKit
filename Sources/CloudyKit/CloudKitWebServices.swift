@@ -77,7 +77,7 @@ struct CKWSRecordFieldValue: Codable {
            self.value = .bytes(data)
         } else if let value = try? container.decode(String.self, forKey: .value) {
             self.value = .string(value)
-        } else if let value = try? container.decode(Int.self, forKey: .value), self.type == "DATETIME" {
+        } else if let value = try? container.decode(Int.self, forKey: .value), self.type == "TIMESTAMP" {
             self.value = .dateTime(value)
         } else if let value = try? container.decode(Int.self, forKey: .value) {
             self.value = .number(value)
