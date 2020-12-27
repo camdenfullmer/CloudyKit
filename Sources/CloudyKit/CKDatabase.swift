@@ -47,7 +47,7 @@ public class CKDatabase {
                                                                                       environment: CloudyKitConfig.environment,
                                                                                       tokenRequest: tokenRequest)
             self.cancellable = publisher.decode(type: CKWSTokenResponse.self, decoder: CloudyKitConfig.decoder)
-                .flatMap { tokenResponse -> AnyPublisher<(String, CKWSAssetUploadResponse), Error> in
+                .flatMap { tokenResponse -> AnyPublisher<[(String, CKWSAssetUploadResponse)], Error> in
                     let publishers: [AnyPublisher<(String, CKWSAssetUploadResponse), Error>] = tokenResponse.tokens.compactMap { token in
                         guard let tokenURL = URL(string: token.url),
                               let fileURL = assets[token.fieldName]?.fileURL,
@@ -69,15 +69,23 @@ public class CKDatabase {
                             .map { return (token.fieldName, $0) }
                             .eraseToAnyPublisher()
                     }
+                    #if os(Linux)
                     // TODO: OpenCombine does not yet support Publishers.MergeMany. Only uploading
-                    //       the first asset.
-                    //  return Publishers.MergeMany(publishers).collect().eraseToAnyPublisher()
-                    return publishers.first?.eraseToAnyPublisher() ?? Empty<(String, CKWSAssetUploadResponse), Error>().eraseToAnyPublisher()
+                    //       the first asset. https://github.com/OpenCombine/OpenCombine/issues/141
+                    let publisher = publishers.first?.eraseToAnyPublisher() ?? Empty<(String, CKWSAssetUploadResponse), Error>().eraseToAnyPublisher()
+                    return publisher
+                        .map { [$0] }
+                        .eraseToAnyPublisher()
+                    #else
+                    return Publishers.MergeMany(publishers)
+                        .collect()
+                        .eraseToAnyPublisher()
+                    #endif
                 }.flatMap { assetUploadResponses in
                     return CloudyKitConfig.urlSession.saveTaskPublisher(database: self,
                                                                         environment: CloudyKitConfig.environment,
                                                                         record: record,
-                                                                        assetUploadResponses: [assetUploadResponses])
+                                                                        assetUploadResponses: assetUploadResponses)
                 }.sink { completion in
                     switch completion {
                     case .failure(let error): completionHandler(nil, error)
