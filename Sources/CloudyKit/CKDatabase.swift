@@ -58,20 +58,28 @@ public class CKDatabase {
                                                                                       tokenRequest: tokenRequest)
             self.cancellable = publisher.decode(type: CKWSTokenResponse.self, decoder: CloudyKitConfig.decoder)
                 .flatMap { tokenResponse -> AnyPublisher<[(String, CKWSAssetUploadResponse)], Error> in
-                    var usedFileURLs: [URL] = []
+                    var usedFileURLs: [String:[URL]] = [:]
                     let publishers: [AnyPublisher<(String, CKWSAssetUploadResponse), Error>] = tokenResponse.tokens.compactMap { token in
                         let assetListURL = assetLists[token.fieldName]?.first(where: {
                             guard let fileURL = $0.fileURL else {
                                 return false
                             }
-                            return !usedFileURLs.contains(fileURL)
+                            if let usedURLs = usedFileURLs[token.fieldName]  {
+                                return !usedURLs.contains(fileURL)
+                            }
+                            return true
                         })?.fileURL
                         guard let tokenURL = URL(string: token.url),
                               let fileURL = assets[token.fieldName]?.fileURL ?? assetListURL,
                               let data = try? Data(contentsOf: fileURL) else {
                             return nil
                         }
-                        usedFileURLs.append(fileURL)
+                        if var usedURLs = usedFileURLs[token.fieldName] {
+                            usedURLs.append(fileURL)
+                            usedFileURLs[token.fieldName] = usedURLs
+                        } else {
+                            usedFileURLs[token.fieldName] = [fileURL]
+                        }
                         let boundary = UUID().uuidString
                         var request = URLRequest(url: tokenURL)
                         request.httpMethod = "POST"
