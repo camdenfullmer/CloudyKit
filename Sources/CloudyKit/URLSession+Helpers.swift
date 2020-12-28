@@ -75,49 +75,18 @@ extension NetworkSession {
             .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
             .tryMap { response in
                 guard let responseRecord = response.records.first,
-                      let recordType = responseRecord.recordType,
-                      let createdTimestamp = responseRecord.created?.timestamp else {
+                      let record = CKRecord(ckwsRecordResponse: responseRecord) else {
                     throw CKError(code: .internalError)
-                }
-                let id = CKRecord.ID(recordName: responseRecord.recordName)
-                let record = CKRecord(recordType: recordType, recordID: id)
-                record.creationDate = Date(timeIntervalSince1970: TimeInterval(createdTimestamp) / 1000)
-                record.recordChangeTag = responseRecord.recordChangeTag
-                for (fieldName, fieldValue) in responseRecord.fields ?? [:] {
-                    switch fieldValue.value {
-                    case .string(let value): record[fieldName] = value
-                    case .number(let value): record[fieldName] = value
-                    case .asset(let value):
-                        guard let downloadURL = value.downloadURL, let fileURL = URL(string: downloadURL.replacingOccurrences(of: "${f}", with: value.fileChecksum)) else {
-                            throw CKError(code: .internalError)
-                        }
-                        record[fieldName] = CKAsset(fileURL: fileURL)
-                    case .assetList(let value):
-                        var assets: [CKAsset] = []
-                        for dict in value {
-                            guard let downloadURL = dict.downloadURL, let fileURL = URL(string: downloadURL.replacingOccurrences(of: "${f}", with: dict.fileChecksum)) else {
-                                throw CKError(code: .internalError)
-                            }
-                            assets.append(CKAsset(fileURL: fileURL))
-                        }
-                        record[fieldName] = assets
-                    case .bytes(let value):
-                        record[fieldName] = value
-                    case .bytesList(let value):
-                        record[fieldName] = value
-                    case .double(let value):
-                        record[fieldName] = value
-                    case .reference(let value):
-                        let recordID = CKRecord.ID(recordName: value.recordName)
-                        let action = CKRecord.Reference.Action(string: value.action)
-                        let reference = CKRecord.Reference(recordID: recordID, action: action)
-                        record[fieldName] = reference
-                    case .dateTime(let value):
-                        record[fieldName] = Date(timeIntervalSince1970: TimeInterval(value) / 1000)
-                    }
                 }
                 return record
             }.eraseToAnyPublisher()
+    }
+    
+    internal func recordsTaskPublisher(for request: URLRequest) -> AnyPublisher<[CKRecord], Error> {
+        return self.successfulDataTaskPublisher(for: request)
+            .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
+            .tryMap { $0.records.compactMap { CKRecord(ckwsRecordResponse: $0) } }
+            .eraseToAnyPublisher()
     }
     
     internal func saveTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, record: CKRecord, assetUploadResponses: [(String, CKWSAssetUploadResponse)] = []) -> AnyPublisher<CKRecord, Error> {
@@ -205,6 +174,33 @@ extension NetworkSession {
         return self.recordTaskPublisher(for: request)
     }
     
+    internal func queryTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, query: CKQuery, zoneID: CKRecordZone.ID?) -> AnyPublisher<[CKRecord], Error> {
+        let now = Date()
+        let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/query"
+        var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(CloudyKitConfig.serverKeyID, forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID")
+        request.addValue(CloudyKitConfig.dateFormatter.string(from: now), forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date")
+        var zoneIDDict: CKWSZoneIDDictionary? = nil
+        if let zoneID = zoneID {
+            zoneIDDict = CKWSZoneIDDictionary(zoneName: zoneID.zoneName, ownerName: zoneID.ownerName)
+        }
+        // TODO: Support results limit.
+        let filterBy = query.predicate.filterBy
+        let sortBy = query.sortDescriptors?.compactMap { CKWSSortDescriptorDictionary(fieldName: $0.key, ascending: $0.ascending) }
+        let queryDict = CKWSQueryDictionary(recordType: query.recordType, filterBy: filterBy, sortBy: sortBy)
+        let queryRequest = CKWSQueryRequest(zoneID: zoneIDDict, resultsLimit: nil, query: queryDict)
+        if let data = try? CloudyKitConfig.encoder.encode(queryRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
+            let signature = CKRequestSignature(data: data, date: now, path: path, privateKey: privateKey)
+            if let signatureValue = try? signature.sign() {
+                request.addValue(signatureValue, forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1")
+            }
+            request.httpBody = data
+        }
+        return self.recordsTaskPublisher(for: request)
+    }
+    
     internal func deleteTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, recordID: CKRecord.ID) -> AnyPublisher<CKWSRecordResponse, Error> {
         let now = Date()
         let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/modify"
@@ -252,4 +248,55 @@ extension NetworkSession {
         }
         return self.successfulDataTaskPublisher(for: request)
     }
+}
+
+extension CKRecord {
+    
+    convenience init?(ckwsRecordResponse: CKWSRecordDictionary) {
+        guard let recordType = ckwsRecordResponse.recordType,
+              let createdTimestamp = ckwsRecordResponse.created?.timestamp else {
+            return nil
+        }
+        let id = CKRecord.ID(recordName: ckwsRecordResponse.recordName)
+        self.init(recordType: recordType, recordID: id)
+        self.creationDate = Date(timeIntervalSince1970: TimeInterval(createdTimestamp) / 1000)
+        self.recordChangeTag = ckwsRecordResponse.recordChangeTag
+        self.fields = [:]
+        for (fieldName, fieldValue) in ckwsRecordResponse.fields ?? [:] {
+            switch fieldValue.value {
+            case .string(let value): self.fields[fieldName] = value
+            case .number(let value): self.fields[fieldName] = value
+            case .asset(let value):
+                guard let downloadURL = value.downloadURL, let fileURL = URL(string: downloadURL.replacingOccurrences(of: "${f}", with: value.fileChecksum)) else {
+                    return nil
+                }
+                self.fields[fieldName] = CKAsset(fileURL: fileURL)
+            case .assetList(let value):
+                var assets: [CKAsset] = []
+                for dict in value {
+                    guard let downloadURL = dict.downloadURL, let fileURL = URL(string: downloadURL.replacingOccurrences(of: "${f}", with: dict.fileChecksum)) else {
+                        return nil
+                    }
+                    assets.append(CKAsset(fileURL: fileURL))
+                }
+                self.fields[fieldName] = assets
+            case .bytes(let value):
+                self.fields[fieldName] = value
+            case .bytesList(let value):
+                self.fields[fieldName] = value
+            case .double(let value):
+                self.fields[fieldName] = value
+            case .reference(let value):
+                let recordID = CKRecord.ID(recordName: value.recordName)
+                let action = CKRecord.Reference.Action(string: value.action)
+                let reference = CKRecord.Reference(recordID: recordID, action: action)
+                self.fields[fieldName] = reference
+            case .dateTime(let value):
+                self.fields[fieldName] = Date(timeIntervalSince1970: TimeInterval(value) / 1000)
+            case .stringList(let value):
+                self.fields[fieldName] = value
+            }
+        }
+    }
+    
 }

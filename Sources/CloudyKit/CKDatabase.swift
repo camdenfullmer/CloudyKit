@@ -166,6 +166,19 @@ public class CKDatabase {
                 completionHandler(recordID, nil)
             })
     }
+    
+    public func perform(_ query: CKQuery, inZoneWith zoneID: CKRecordZone.ID?, completionHandler: @escaping ([CKRecord]?, Error?) -> Void) {
+        self.cancellable = CloudyKitConfig.urlSession.queryTaskPublisher(database: self, environment: CloudyKitConfig.environment, query: query, zoneID: zoneID)
+            .sink(receiveCompletion: { completion in
+                switch completion {
+                case .failure(let error):
+                    completionHandler(nil, error)
+                case .finished: break
+                }
+            }, receiveValue: { record in
+                completionHandler(record, nil)
+            })
+    }
 }
 
 extension CKDatabase.Scope: CustomStringConvertible {

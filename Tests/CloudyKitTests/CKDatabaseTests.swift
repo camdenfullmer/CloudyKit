@@ -321,6 +321,57 @@ final class CKDatabaseTests: XCTestCase {
         self.wait(for: [expectation], timeout: 1)
     }
     
+    func testQueryRecords() {
+        let response = """
+{
+        "records": [
+            {
+                "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+                "recordType": "Users",
+                "recordChangeTag": "\(UUID().uuidString)",
+                "created": {
+                    "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
+                },
+                "fields": {
+                    "firstName" : {"value" : "Mei"},
+                    "lastName" : {"value" : "Chen"},
+                    "width": {"value": 18},
+                    "height": {"value": 24}
+                }
+            }
+        ]
+}
+"""
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
+
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let expectation = self.expectation(description: "completion handler called")
+        let query = CKQuery(recordType: "Users", predicate: Predicate(value: true))
+        query.sortDescriptors = [SortDescriptor(key: "firstName", ascending: false)]
+        database.perform(query, inZoneWith: nil) { (records, error) in
+            XCTAssertEqual("POST", self.mockedSession?.requests.first?.httpMethod)
+            XCTAssertNotNil(self.mockedSession?.requests.first?.httpBody)
+            XCTAssertEqual("1234567890", self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
+            XCTAssertNil(error)
+            XCTAssertNotNil(records)
+            XCTAssertEqual("Users", records?.first?.recordType)
+            XCTAssertEqual("E621E1F8-C36C-495A-93FC-0C247A3E6E5F", records?.first?.recordID.recordName)
+            XCTAssertEqual("Mei", records?.first?["firstName"] as? String)
+            XCTAssertEqual("Chen", records?.first?["lastName"] as? String)
+            XCTAssertEqual(18, records?.first?["width"] as? Int)
+            XCTAssertEqual(24, records?.first?["height"] as? Int)
+            XCTAssertNotNil(records?.first?.creationDate)
+            XCTAssertNotNil(records?.first?.recordChangeTag)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
+    
     func testDeleteRecord() {
         let response = """
 {
@@ -405,6 +456,7 @@ final class CKDatabaseTests: XCTestCase {
     static var allTests = [
         ("testSaveNewRecord", testSaveNewRecord),
         ("testFetchRecord", testFetchRecord),
+//        ("testQueryRecords", testQueryRecords),
         ("testNoRecordChangeTagError", testNoRecordChangeTagError),
         ("testDeleteRecord", testDeleteRecord),
     ]

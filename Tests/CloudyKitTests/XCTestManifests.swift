@@ -7,6 +7,7 @@ public func allTests() -> [XCTestCaseEntry] {
         testCase(CKRecordTests.allTests),
         testCase(CKDatabaseTests.allTests),
         testCase(CKAssetTests.allTests),
+        testCase(PredicatePlusHelpersTests.allTests),
     ]
 }
 #endif

@@ -83,8 +83,33 @@ extension CKRecord.ID: Equatable {
     }
 }
 
+extension CKRecord.ID: CustomStringConvertible {
+    
+    public var description: String {
+        return withUnsafePointer(to: self) { (pointer) -> String in
+            return "<CKRecordID: \(pointer.debugDescription); recordName=\(self.recordName), zoneID=_defaultZone:__defaultOwner__>"
+        }
+        
+    }
+}
+
 extension CKRecord.Reference: Equatable {
     public static func == (lhs: CKRecord.Reference, rhs: CKRecord.Reference) -> Bool {
         return lhs.recordID == rhs.recordID && lhs.action == rhs.action
+    }
+}
+
+extension CKRecord.Reference: CVarArg {
+    public var _cVarArgEncoding: [Int] {
+        return [unsafeBitCast(self, to: Int.self)]
+    }
+}
+
+extension CKRecord.Reference: CustomStringConvertible {
+    
+    public var description: String {
+        return withUnsafePointer(to: self) { (pointer) -> String in
+            return "<CKReference: \(pointer.debugDescription); recordID=\(self.recordID)>"
+        }
     }
 }

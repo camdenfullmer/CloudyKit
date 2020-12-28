@@ -38,13 +38,18 @@ struct CKWSAssetDictionary: Codable {
     let downloadURL: String?
 }
 
+extension CKWSAssetDictionary: Equatable {}
+
 struct CKWSReferenceDictionary: Codable {
     let recordName: String
     let action: String
 }
 
+extension CKWSReferenceDictionary: Equatable {}
+
 enum CKWSValue {
     case string(String)
+    case stringList(Array<String>)
     case number(Int)
     case asset(CKWSAssetDictionary)
     case assetList(Array<CKWSAssetDictionary>)
@@ -53,6 +58,34 @@ enum CKWSValue {
     case double(Double)
     case reference(CKWSReferenceDictionary)
     case dateTime(Int)
+}
+
+extension CKWSValue: Equatable {
+    static func == (lhs: CKWSValue, rhs: CKWSValue) -> Bool {
+        switch (lhs, rhs) {
+        case (.string(let ls), .string(let rs)):
+            return ls == rs
+        case (.stringList(let ls), .stringList(let rs)):
+            return ls == rs
+        case (.number(let ls), .number(let rs)):
+            return ls == rs
+        case (.asset(let ls), .asset(let rs)):
+            return ls == rs
+        case (.assetList(let ls), .assetList(let rs)):
+            return ls == rs
+        case (.bytes(let ls), .bytes(let rs)):
+            return ls == rs
+        case (.bytesList(let ls), .bytesList(let rs)):
+            return ls == rs
+        case (.double(let ls), .double(let rs)):
+            return ls == rs
+        case (.reference(let ls), .reference(let rs)):
+            return ls == rs
+        case (.dateTime(let ls), .dateTime(let rs)):
+            return ls == rs
+        default: return false
+        }
+    }
 }
 
 struct CKWSRecordFieldValue: Codable {
@@ -118,10 +151,14 @@ struct CKWSRecordFieldValue: Codable {
             try container.encode(value, forKey: .value)
         case .dateTime(let value):
             try container.encode(value, forKey: .value)
+        case .stringList(let value):
+            try container.encode(value, forKey: .value)
         }
         try container.encodeIfPresent(self.type, forKey: .type)
     }
 }
+
+extension CKWSRecordFieldValue: Equatable {}
 
 struct CKWSRecordDictionary: Codable {
     let recordName: String
@@ -185,4 +222,62 @@ struct CKWSAssetTokenRequest: Encodable {
 
 struct CKWSAssetUploadResponse: Decodable {
     let singleFile: CKWSAssetDictionary
+}
+
+struct CKWSZoneIDDictionary: Encodable {
+    let zoneName: String
+    let ownerName: String
+}
+
+struct CKWSFilterDictionary: Encodable {
+    
+    enum Comparator: String, Encodable {
+        case equals = "EQUALS"
+        case notEquals = "NOT_EQUALS"
+        case lessThan = "LESS_THAN"
+        case lessThanOrEquals = "LESS_THAN_OR_EQUALS"
+        case greaterThan = "GREATER_THAN"
+        case greaterThanOrEquals = "GREATER_THAN_OR_EQUALS"
+        case near = "NEAR"
+        case containsAllTokens = "CONTAINS_ALL_TOKENS"
+        case `in` = "IN"
+        case notIn = "NOT_IN"
+        case containsAnyTokens = "CONTAINS_ANY_TOKENS"
+        case listContains = "LIST_CONTAINS"
+        case notListContains = "NOT_LIST_CONTAINS"
+        case notListContainsAny = "NOT_LIST_CONTAINS_ANY"
+        case beginsWith = "BEGINS_WITH"
+        case notBeginsWith = "NOT_BEGINS_WITH"
+        case listMemberBeginsWith = "LIST_MEMBER_BEGINS_WITH"
+        case notListMemberBeginsWith = "NOT_LIST_MEMBER_BEGINS_WITH"
+        case listContainsAll = "LIST_CONTAINS_ALL"
+        case notListContainsAll = "NOT_LIST_CONTAINS_ALL"
+    }
+    
+    let comparator: Comparator
+    let fieldName: String
+    let fieldValue: CKWSRecordFieldValue
+}
+
+extension CKWSFilterDictionary: Equatable {
+    static func == (lhs: CKWSFilterDictionary, rhs: CKWSFilterDictionary) -> Bool {
+        return lhs.comparator == rhs.comparator && lhs.fieldValue == rhs.fieldValue && lhs.fieldName == rhs.fieldName
+    }
+}
+
+struct CKWSSortDescriptorDictionary: Encodable {
+    let fieldName: String?
+    let ascending: Bool
+}
+
+struct CKWSQueryDictionary: Encodable {
+    let recordType: String
+    let filterBy: [CKWSFilterDictionary]?
+    let sortBy: [CKWSSortDescriptorDictionary]?
+}
+
+struct CKWSQueryRequest: Encodable {
+    let zoneID: CKWSZoneIDDictionary?
+    let resultsLimit: Int?
+    let query: CKWSQueryDictionary
 }

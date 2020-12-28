@@ -13,6 +13,9 @@ CloudyKit is a drop-in replacement for Apple's [CloudKit](https://developer.appl
     - [Server-to-Server Key](#server-to-server-key)
     - [Environment](#environment)
   - [Supported Features](#supported-features)
+  - [API Differences](#api-differences)
+    - [`NSSortDescriptor`](#nssortdescriptor)
+    - [`NSPredicate`](#nspredicate)
   - [Questions](#questions)
 
 ## Installation
@@ -66,6 +69,24 @@ Below is the list of supported and upcoming features for CloudyKit.
 - [ ] CKErrors
 - [ ] Fetching Record Changes
 - [x] Uploading Assets
+
+## API Differences
+
+### `NSSortDescriptor`
+
+`NSSortDescriptor` on Linux [does not offer](https://github.com/apple/swift-corelibs-foundation/blob/main/Docs/ReleaseNotes_Swift5.md#nssortdescriptor-changes) an initializer with a key `String` value. Instead, use the `typealias` `SortDescriptor` that offers the same API.
+
+```swift
+let sortDescriptor = SortDescriptor(key: "KEY", ascending: true) // instead of NSSortDescriptor(key: "KEY", ascending: true)
+```
+
+### `NSPredicate`
+
+`NSPredicate` on Linux [does not support](https://github.com/apple/swift-corelibs-foundation/blob/main/Docs/Status.md#entities) an initializer with a predicate format. Instead, use the `typealias` `Predicate` that offers the same API.
+
+```swift
+let predicate = Predicate(format: "ANY favoriteColors = 'red'") // instead of NSPredicate(format: "ANY favoriteColors = 'red'")
+```
 
 ## Questions
 
