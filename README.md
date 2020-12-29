@@ -51,7 +51,7 @@ CloudyKitConfig.serverPrivateKey = try CKPrivateKey(path: "eckey.pem")
 CloudyKit allows you to switch between your development and production environments by doing the following:
 
 ```swift
-CloudyKitConfig.environment = .development | .production
+CloudyKitConfig.environment = .development // Use `.production` for production.
 ```
 
 ## Supported Features
@@ -61,14 +61,14 @@ Below is the list of supported and upcoming features for CloudyKit.
 - [x] Creating Records
 - [x] Saving Records
 - [x] Fetching Records
-- [ ] Querying Records
+- [x] Querying Records
 - [x] Deleting Records
-- [ ] All Types (References, Assets, Locations, Dates, Bytes, Doubles, Lists)
-- [ ] Private and Shared Databases
-- [ ] CKDatabase Operations
-- [ ] CKErrors
-- [ ] Fetching Record Changes
 - [x] Uploading Assets
+- [ ] All Types (missing Locations, Lists)
+- [ ] Private and Shared Databases
+- [ ] Operations
+- [ ] Errors
+- [ ] Fetching Record Changes
 
 ## API Differences
 
