@@ -4,7 +4,7 @@
 [![Twitter](https://img.shields.io/badge/Twitter-@camdenfullmer-blue.svg?style=flat)](https://twitter.com/camdenfullmer)
 [![Twitch](https://img.shields.io/badge/Twitch-@CamdenTheCreator-purple.svg?style=flat)](https://twitch.tv/CamdenTheCreator)
 
-CloudyKit is a drop-in replacement for Apple's [CloudKit](https://developer.apple.com/icloud/cloudkit/) on Linux. It uses [CloudKit Web Services](https://developer.apple.com/library/archive/documentation/DataManagement/Conceptual/CloudKitWebServicesReference/index.html) behind the scenes and has the same [API](https://developer.apple.com/documentation/cloudkit) that is used on iOS and macOS.
+CloudyKit is a drop in replacement for Apple's [CloudKit](https://developer.apple.com/icloud/cloudkit/) on Linux. It uses [CloudKit Web Services](https://developer.apple.com/library/archive/documentation/DataManagement/Conceptual/CloudKitWebServicesReference/index.html) behind the scenes and has the same [API](https://developer.apple.com/documentation/cloudkit) that is used on iOS and macOS.
 
 - [CloudyKit](#cloudykit)
   - [Installation](#installation)
