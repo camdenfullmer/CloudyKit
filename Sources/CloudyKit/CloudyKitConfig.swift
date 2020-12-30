@@ -7,7 +7,7 @@ public class CloudyKitConfig {
     
     public enum Environment: String {
         case development = "development"
-        case `public` = "public"
+        case production = "production"
     }
     
     public static var environment: Environment = .development

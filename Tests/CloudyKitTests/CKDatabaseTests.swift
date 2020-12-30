@@ -20,6 +20,7 @@ final class CKDatabaseTests: XCTestCase {
         session.responseHandler = { _ in
             return (Data(), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
         }
+        CloudyKitConfig.environment = .development
         CloudyKitConfig.urlSession = session
         CloudyKitConfig.serverKeyID = "1234567890"
         CloudyKitConfig.serverPrivateKey = try! CKPrivateKey(data: Data.loadAsset(name: "eckey.pem"))
@@ -452,13 +453,57 @@ final class CKDatabaseTests: XCTestCase {
         }
         self.wait(for: [expectation], timeout: 1)
     }
+    
+    func testEnvironment() {
+        let response = """
+{
+        "records": [
+            {
+                "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+                "recordType": "Users",
+                "recordChangeTag": "\(UUID().uuidString)",
+                "created": {
+                    "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
+                },
+                "fields": {
+                    "firstName" : {"value" : "Mei"},
+                    "lastName" : {"value" : "Chen"},
+                    "width": {"value": 18},
+                    "height": {"value": 24}
+                }
+            }
+        ]
+}
+"""
+        CloudyKitConfig.environment = .production
+        mockedSession?.responseHandler = { sessionResponse in
+            if let url = sessionResponse.url {
+                XCTAssertTrue(url.absoluteString.contains("production"))
+                XCTAssertTrue(url.absoluteString.contains("public"))
+                XCTAssertTrue(url.absoluteString.contains("iCloud.com.example.myexampleapp"))
+            } else {
+                XCTFail("session response url is nil")
+            }
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
+        
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
+        let expectation = self.expectation(description: "completion handler called")
+        database.fetch(withRecordID: recordID) { (record, error) in
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
 
     static var allTests = [
         ("testSaveNewRecord", testSaveNewRecord),
         ("testFetchRecord", testFetchRecord),
-//        ("testQueryRecords", testQueryRecords),
+        ("testQueryRecords", testQueryRecords),
         ("testNoRecordChangeTagError", testNoRecordChangeTagError),
         ("testDeleteRecord", testDeleteRecord),
+        ("testEnvironment", testEnvironment),
     ]
 }
 
