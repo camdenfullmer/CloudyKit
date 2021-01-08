@@ -46,7 +46,7 @@ final class CKDatabaseTests: XCTestCase {
                     "bytes": {"value": "AAECAwQ=", "type": "BYTES"},
                     "bytesList": {"value": ["AAECAwQ="], "type": "BYTES_LIST"},
                     "double": {"value": 1.234},
-                    "stringsList": {"value": ["foo", "bar"], "type": "STRINGS_LIST"},
+                    "stringsList": {"value": ["foo", "bar"], "type": "STRING_LIST"},
                     "reference": {
                         "value": {
                             "recordName": "D27CC4CB-CC49-4710-9370-418A0E97D71C",
