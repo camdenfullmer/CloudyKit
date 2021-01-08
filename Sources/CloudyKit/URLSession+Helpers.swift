@@ -105,6 +105,8 @@ extension NetworkSession {
                 fields[fieldName] = CKWSRecordFieldValue(value: .number(value), type: nil)
             case let value as String:
                 fields[fieldName] = CKWSRecordFieldValue(value: .string(value), type: nil)
+            case let value as Array<String>:
+                fields[fieldName] = CKWSRecordFieldValue(value: .stringList(value), type: nil)
             case _ as CKAsset:
                 guard let dictionary = assetUploadResponses.first(where: { $0.0 == fieldName })?.1.singleFile else {
                     if CloudyKitConfig.debug {
