@@ -121,6 +121,8 @@ struct CKWSRecordFieldValue: Codable {
         } else if let value = try? container.decode([String].self, forKey: .value), self.type == "BYTES_LIST" {
             let datas = value.compactMap({ Data(base64Encoded: $0) })
             self.value = .bytesList(datas)
+        } else if let value = try? container.decode([String].self, forKey: .value) {
+            self.value = .stringList(value)
         } else if let value = try? container.decode(CKWSReferenceDictionary.self, forKey: .value) {
             self.value = .reference(value)
         } else if let value = try? container.decode(Double.self, forKey: .value) {

@@ -46,6 +46,7 @@ final class CKDatabaseTests: XCTestCase {
                     "bytes": {"value": "AAECAwQ=", "type": "BYTES"},
                     "bytesList": {"value": ["AAECAwQ="], "type": "BYTES_LIST"},
                     "double": {"value": 1.234},
+                    "stringsList": {"value": ["foo", "bar"], "type": "STRINGS_LIST"},
                     "reference": {
                         "value": {
                             "recordName": "D27CC4CB-CC49-4710-9370-418A0E97D71C",
@@ -74,6 +75,7 @@ final class CKDatabaseTests: XCTestCase {
         let data = Data([0, 1, 2, 3, 4])
         record["bytes"] = data
         record["bytesList"] = [data]
+        record["stringsList"] = ["foo", "bar"]
         record["double"] = 1.234
         record["reference"] = reference
         record["dateTime"] = dateTime
@@ -95,6 +97,7 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual(24, record?["height"] as? Int)
             XCTAssertEqual(Data([0, 1, 2, 3, 4]), record?["bytes"] as? Data)
             XCTAssertEqual([Data([0, 1, 2, 3, 4])], record?["bytesList"] as? [Data])
+            XCTAssertEqual(["foo","bar"], record?["stringsList"] as? [String])
             XCTAssertEqual(1.234, record?["double"] as? Double)
             XCTAssertEqual(reference, record?["reference"] as? CloudyKit.CKRecord.Reference)
             XCTAssertEqual(dateTime, record?["dateTime"] as? Date)
