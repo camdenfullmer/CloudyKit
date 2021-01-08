@@ -108,25 +108,25 @@ struct CKWSRecordFieldValue: Codable {
         if let value = try? container.decode(String.self, forKey: .value), self.type == "BYTES" {
             let data = Data(base64Encoded: value) ?? Data()
            self.value = .bytes(data)
-        } else if let value = try? container.decode(String.self, forKey: .value) {
-            self.value = .string(value)
         } else if let value = try? container.decode(Int.self, forKey: .value), self.type == "TIMESTAMP" {
             self.value = .dateTime(value)
+        } else if let value = try? container.decode(Double.self, forKey: .value), self.type == "DOUBLE" {
+            self.value = .double(value)
+        } else if let value = try? container.decode([String].self, forKey: .value), self.type == "BYTES_LIST" {
+            let datas = value.compactMap({ Data(base64Encoded: $0) })
+            self.value = .bytesList(datas)
+        } else if let value = try? container.decode([String].self, forKey: .value), self.type == "STRING_LIST" {
+            self.value = .stringList(value)
+        } else if let value = try? container.decode(String.self, forKey: .value), self.type == "STRING" {
+            self.value = .string(value)
         } else if let value = try? container.decode(Int.self, forKey: .value) {
             self.value = .number(value)
         } else if let value = try? container.decode(CKWSAssetDictionary.self, forKey: .value) {
             self.value = .asset(value)
         } else if let value = try? container.decode([CKWSAssetDictionary].self, forKey: .value) {
             self.value = .assetList(value)
-        } else if let value = try? container.decode([String].self, forKey: .value), self.type == "BYTES_LIST" {
-            let datas = value.compactMap({ Data(base64Encoded: $0) })
-            self.value = .bytesList(datas)
-        } else if let value = try? container.decode([String].self, forKey: .value) {
-            self.value = .stringList(value)
         } else if let value = try? container.decode(CKWSReferenceDictionary.self, forKey: .value) {
             self.value = .reference(value)
-        } else if let value = try? container.decode(Double.self, forKey: .value) {
-            self.value = .double(value)
         } else {
             throw DecodingError.dataCorruptedError(forKey: .value, in: container, debugDescription: "unable to decode value from container: \(container)")
         }

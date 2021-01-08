@@ -39,13 +39,13 @@ final class CKDatabaseTests: XCTestCase {
                     "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
                 },
                 "fields": {
-                    "firstName" : {"value" : "Mei"},
-                    "lastName" : {"value" : "Chen"},
+                    "firstName" : {"value" : "Mei", "type": "STRING"},
+                    "lastName" : {"value" : "Chen", "type": "STRING"},
                     "width": {"value": 18},
                     "height": {"value": 24},
                     "bytes": {"value": "AAECAwQ=", "type": "BYTES"},
                     "bytesList": {"value": ["AAECAwQ="], "type": "BYTES_LIST"},
-                    "double": {"value": 1.234},
+                    "double": {"value": 1.234, "type": "DOUBLE"},
                     "stringsList": {"value": ["foo", "bar"], "type": "STRING_LIST"},
                     "reference": {
                         "value": {
@@ -103,6 +103,42 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual(dateTime, record?["dateTime"] as? Date)
             XCTAssertNotNil(record?.creationDate)
             XCTAssertNotNil(record?.recordChangeTag)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
+    
+    func testSaveNewRecordWithZeroDouble() {
+        let response = """
+{
+        "records": [
+            {
+                "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+                "recordType": "Users",
+                "recordChangeTag": "\(UUID().uuidString)",
+                "created": {
+                    "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
+                },
+                "fields": {
+                    "double": {"value": 0.0, "type": "DOUBLE"}
+                }
+            }
+        ]
+}
+"""
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
+        
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let record = CloudyKit.CKRecord(recordType: "Users")
+        record["double"] = Double(0)
+        let expectation = self.expectation(description: "completion handler called")
+        database.save(record) { (record, error) in
+            XCTAssertNil(error)
+            XCTAssertNotNil(record)
+            XCTAssertEqual(Double(0), record?["double"] as? Double)
             expectation.fulfill()
         }
         self.wait(for: [expectation], timeout: 1)
@@ -287,8 +323,8 @@ final class CKDatabaseTests: XCTestCase {
                     "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
                 },
                 "fields": {
-                    "firstName" : {"value" : "Mei"},
-                    "lastName" : {"value" : "Chen"},
+                    "firstName" : {"value" : "Mei", "type": "STRING"},
+                    "lastName" : {"value" : "Chen", "type": "STRING"},
                     "width": {"value": 18},
                     "height": {"value": 24}
                 }
@@ -337,8 +373,8 @@ final class CKDatabaseTests: XCTestCase {
                     "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
                 },
                 "fields": {
-                    "firstName" : {"value" : "Mei"},
-                    "lastName" : {"value" : "Chen"},
+                    "firstName" : {"value" : "Mei", "type": "STRING"},
+                    "lastName" : {"value" : "Chen", "type": "STRING"},
                     "width": {"value": 18},
                     "height": {"value": 24}
                 }
