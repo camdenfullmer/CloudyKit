@@ -18,7 +18,7 @@ public class CKRecord {
         }
     }
     
-    public class Reference {
+    public class Reference: NSObject {
         public enum Action: Int {
             case none = 0
             case deleteSelf = 1
@@ -40,6 +40,10 @@ public class CKRecord {
         
         public let recordID: ID
         public let action: Action
+        
+//        public override var _cVarArgEncoding: [Int] {
+//            return [unsafeBitCast(self, to: Int.self)]
+//        }
         
         public convenience init(record: CKRecord, action: CKRecord.Reference.Action) {
             self.init(recordID: record.recordID, action: action)
@@ -93,21 +97,18 @@ extension CKRecord.ID: CustomStringConvertible {
     }
 }
 
-extension CKRecord.Reference: Equatable {
-    public static func == (lhs: CKRecord.Reference, rhs: CKRecord.Reference) -> Bool {
-        return lhs.recordID == rhs.recordID && lhs.action == rhs.action
+extension CKRecord.Reference {
+    public override func isEqual(_ object: Any?) -> Bool {
+        guard let reference = object as? CKRecord.Reference else {
+            return false
+        }
+        return self.recordID == reference.recordID && self.action == reference.action
     }
 }
 
-extension CKRecord.Reference: CVarArg {
-    public var _cVarArgEncoding: [Int] {
-        return [unsafeBitCast(self, to: Int.self)]
-    }
-}
-
-extension CKRecord.Reference: CustomStringConvertible {
+extension CKRecord.Reference {
     
-    public var description: String {
+    public override var description: String {
         return withUnsafePointer(to: self) { (pointer) -> String in
             return "<CKReference: \(pointer.debugDescription); recordID=\(self.recordID)>"
         }
