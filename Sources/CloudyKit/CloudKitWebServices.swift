@@ -57,6 +57,7 @@ enum CKWSValue {
     case bytesList(Array<Data>)
     case double(Double)
     case reference(CKWSReferenceDictionary)
+    case referenceList(Array<CKWSReferenceDictionary>)
     case dateTime(Int)
 }
 
@@ -127,6 +128,8 @@ struct CKWSRecordFieldValue: Codable {
             self.value = .assetList(value)
         } else if let value = try? container.decode(CKWSReferenceDictionary.self, forKey: .value) {
             self.value = .reference(value)
+        } else if let value = try? container.decode([CKWSReferenceDictionary].self, forKey: .value) {
+            self.value = .referenceList(value)
         } else {
             throw DecodingError.dataCorruptedError(forKey: .value, in: container, debugDescription: "unable to decode value from container: \(container)")
         }
@@ -154,6 +157,8 @@ struct CKWSRecordFieldValue: Codable {
         case .dateTime(let value):
             try container.encode(value, forKey: .value)
         case .stringList(let value):
+            try container.encode(value, forKey: .value)
+        case .referenceList(let value):
             try container.encode(value, forKey: .value)
         }
         try container.encodeIfPresent(self.type, forKey: .type)

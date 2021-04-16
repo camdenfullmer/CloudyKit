@@ -53,6 +53,26 @@ final class CKDatabaseTests: XCTestCase {
                             "action": "NONE"
                         }
                     },
+                    "referenceList" : {
+                        "value" : [ {
+                            "recordName" : "D27CC4CB-CC49-4710-9370-418A0E97D71C",
+                            "action" : "NONE",
+                            "zoneID" : {
+                                "zoneName" : "_defaultZone",
+                                "ownerRecordName" : "_defaultOwner",
+                                "zoneType" : "DEFAULT_ZONE"
+                            }
+                        }, {
+                            "recordName" : "D27CC4CB-CC49-4710-9370-418A0E97D71C",
+                            "action" : "NONE",
+                            "zoneID" : {
+                                "zoneName" : "_defaultZone",
+                                "ownerRecordName" : "_defaultOwner",
+                                "zoneType" : "DEFAULT_ZONE"
+                            }
+                        } ],
+                        "type" : "REFERENCE_LIST"
+                    },
                     "dateTime": { "value": 1609034460447, "type": "TIMESTAMP" }
                 }
             }
@@ -78,6 +98,7 @@ final class CKDatabaseTests: XCTestCase {
         record["stringsList"] = ["foo", "bar"]
         record["double"] = 1.234
         record["reference"] = reference
+        record["referenceList"] = [reference, reference]
         record["dateTime"] = dateTime
         XCTAssertNil(record.creationDate)
         let expectation = self.expectation(description: "completion handler called")
@@ -100,6 +121,7 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertEqual(["foo","bar"], record?["stringsList"] as? [String])
             XCTAssertEqual(1.234, record?["double"] as? Double)
             XCTAssertEqual(reference, record?["reference"] as? CloudyKit.CKRecord.Reference)
+            XCTAssertEqual([reference, reference], (record?["referenceList"] as? [CloudyKit.CKRecord.Reference]))
             XCTAssertEqual(dateTime, record?["dateTime"] as? Date)
             XCTAssertNotNil(record?.creationDate)
             XCTAssertNotNil(record?.recordChangeTag)

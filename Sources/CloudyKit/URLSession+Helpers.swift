@@ -130,6 +130,9 @@ extension NetworkSession {
             case let value as CKRecord.Reference:
                 let dict = CKWSReferenceDictionary(recordName: value.recordID.recordName, action: value.action.stringValue)
                 fields[fieldName] = CKWSRecordFieldValue(value: .reference(dict), type: nil)
+            case let value as Array<CKRecord.Reference>:
+                let dictionaries = value.map { CKWSReferenceDictionary(recordName: $0.recordID.recordName, action: $0.action.stringValue) }
+                fields[fieldName] = CKWSRecordFieldValue(value: .referenceList(dictionaries), type: nil)
             default:
                 fatalError("unable to handle \(value) of type \(type(of: value))")
             }
@@ -297,6 +300,14 @@ extension CKRecord {
                 self.fields[fieldName] = Date(timeIntervalSince1970: TimeInterval(value) / 1000)
             case .stringList(let value):
                 self.fields[fieldName] = value
+            case .referenceList(let value):
+                let references = value.map { dict -> CKRecord.Reference in
+                    let recordID = CKRecord.ID(recordName: dict.recordName)
+                    let action = CKRecord.Reference.Action(string: dict.action)
+                    let reference = CKRecord.Reference(recordID: recordID, action: action)
+                    return reference
+                }
+                self.fields[fieldName] = references
             }
         }
     }
