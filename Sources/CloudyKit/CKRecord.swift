@@ -41,10 +41,6 @@ public class CKRecord {
         public let recordID: ID
         public let action: Action
         
-//        public override var _cVarArgEncoding: [Int] {
-//            return [unsafeBitCast(self, to: Int.self)]
-//        }
-        
         public convenience init(record: CKRecord, action: CKRecord.Reference.Action) {
             self.init(recordID: record.recordID, action: action)
         }
@@ -52,6 +48,19 @@ public class CKRecord {
         public init(recordID: CKRecord.ID, action: CKRecord.Reference.Action) {
             self.recordID = recordID
             self.action = action
+        }
+        
+        public override var description: String {
+            return withUnsafePointer(to: self) { (pointer) -> String in
+                return "<CKReference: \(pointer.debugDescription); recordID=\(self.recordID)>"
+            }
+        }
+        
+        public override func isEqual(_ object: Any?) -> Bool {
+            guard let reference = object as? CKRecord.Reference else {
+                return false
+            }
+            return self.recordID == reference.recordID && self.action == reference.action
         }
     }
     
@@ -94,23 +103,5 @@ extension CKRecord.ID: CustomStringConvertible {
             return "<CKRecordID: \(pointer.debugDescription); recordName=\(self.recordName), zoneID=_defaultZone:__defaultOwner__>"
         }
         
-    }
-}
-
-extension CKRecord.Reference {
-    public override func isEqual(_ object: Any?) -> Bool {
-        guard let reference = object as? CKRecord.Reference else {
-            return false
-        }
-        return self.recordID == reference.recordID && self.action == reference.action
-    }
-}
-
-extension CKRecord.Reference {
-    
-    public override var description: String {
-        return withUnsafePointer(to: self) { (pointer) -> String in
-            return "<CKReference: \(pointer.debugDescription); recordID=\(self.recordID)>"
-        }
     }
 }
