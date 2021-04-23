@@ -34,3 +34,10 @@ public struct CKError: Error {
         self.userInfo = userInfo
     }
 }
+
+extension CKError: LocalizedError {
+    public var errorDescription: String? {
+        return self.userInfo[NSLocalizedDescriptionKey] as? String ??
+            "CKError \(self.code.rawValue)"
+    }
+}

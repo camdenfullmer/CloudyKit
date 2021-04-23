@@ -534,7 +534,7 @@ final class CKDatabaseTests: XCTestCase {
             XCTAssertNil(record)
             XCTAssertNotNil(error)
             XCTAssertEqual(CloudyKit.CKError.Code.invalidArguments.rawValue, (error as? CloudyKit.CKError)?.errorCode)
-            XCTAssertEqual("Type is not marked indexable", (error as? CloudyKit.CKError)?.localizedDescription)
+            XCTAssertEqual("Type is not marked indexable", error?.localizedDescription)
             expectation.fulfill()
         }
         self.wait(for: [expectation], timeout: 1)
