@@ -36,7 +36,7 @@ class MockedURLSessionDataSubscription<S: Subscriber>: Subscription where S.Inpu
                 _ = subscriber.receive((data, response))
                 subscriber.receive(completion: .finished)
             } else {
-                subscriber.receive(completion: .failure(CloudyKit.CKError(code: .internalError)))
+                subscriber.receive(completion: .failure(CloudyKit.CKError(code: .internalError, userInfo: [:])))
             }
         }
     }

@@ -26,7 +26,7 @@ class CKRequestSignature {
     func sign() throws -> String {
         let digest = Digest(using: .sha256)
         guard let dataDigest = digest.update(data: data) else {
-            throw CKError(code: .internalError)
+            throw CKError(code: .internalError, userInfo: [:])
         }
         let hash = dataDigest.final()
         let base64BodyHash = Data(bytes: hash, count: hash.count).base64EncodedString()

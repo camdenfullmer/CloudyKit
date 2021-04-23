@@ -515,6 +515,31 @@ final class CKDatabaseTests: XCTestCase {
         self.wait(for: [expectation], timeout: 1)
     }
     
+    func testQueriedTypeIsNotIndexableError() {
+        let response = """
+{
+    "uuid" : "\(UUID().uuidString)",
+    "serverErrorCode" : "BAD_REQUEST",
+    "reason" : "Queried type is not marked indexable"
+}
+"""
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
+        let expectation = self.expectation(description: "completion handler called")
+        database.fetch(withRecordID: recordID) { (record, error) in
+            XCTAssertNil(record)
+            XCTAssertNotNil(error)
+            XCTAssertEqual(CloudyKit.CKError.Code.invalidArguments.rawValue, (error as? CloudyKit.CKError)?.errorCode)
+            XCTAssertEqual("Type is not marked indexable", (error as? CloudyKit.CKError)?.localizedDescription)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
+    
     func testEnvironment() {
         let response = """
 {

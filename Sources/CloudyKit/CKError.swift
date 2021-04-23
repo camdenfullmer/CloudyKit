@@ -14,12 +14,23 @@ public struct CKError: Error {
     }
     
     public var errorCode: Int {
-        return code.rawValue
+        return self.code.rawValue
+    }
+    
+    public var errorUserInfo: [String:Any] {
+        return self.userInfo
+    }
+    
+    public var localizedDescription: String {
+        return self.userInfo[NSLocalizedDescriptionKey] as? String ??
+            "CKError \(self.code.rawValue)"
     }
     
     internal let code: Code
+    internal let userInfo: [String:Any]
     
-    internal init(code: Code) {
+    internal init(code: Code, userInfo: [String:Any]) {
         self.code = code
+        self.userInfo = userInfo
     }
 }

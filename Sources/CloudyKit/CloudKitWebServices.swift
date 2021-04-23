@@ -17,9 +17,13 @@ extension CKWSErrorResponse {
     
     var ckError: CKError {
         if self.serverErrorCode == "BAD_REQUEST" {
-            return CKError(code: .invalidArguments)
+            var userInfo: [String:Any] = [:]
+            if reason == "Queried type is not marked indexable" {
+                userInfo[NSLocalizedDescriptionKey] = "Type is not marked indexable"
+            }
+            return CKError(code: .invalidArguments, userInfo: userInfo)
         } else {
-            return CKError(code: .internalError)
+            return CKError(code: .internalError, userInfo: [:])
         }
     }
     

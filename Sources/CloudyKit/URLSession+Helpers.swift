@@ -42,7 +42,7 @@ extension NetworkSession {
         return self.internalDataTaskPublisher(for: request)
             .tryMap { output in
                 guard let response = output.response as? HTTPURLResponse else {
-                    throw CKError(code: .internalError)
+                    throw CKError(code: .internalError, userInfo: [:])
                 }
                 if CloudyKitConfig.debug {
                     print("=== CloudKit Web Services Request ===")
@@ -64,7 +64,7 @@ extension NetworkSession {
                     throw ckwsError.ckError
                 }
                 guard response.statusCode == 200 else {
-                    throw CKError(code: .internalError)
+                    throw CKError(code: .internalError, userInfo: [:])
                 }
                 return output.data
             }.eraseToAnyPublisher()
@@ -76,7 +76,7 @@ extension NetworkSession {
             .tryMap { response in
                 guard let responseRecord = response.records.first,
                       let record = CKRecord(ckwsRecordResponse: responseRecord) else {
-                    throw CKError(code: .internalError)
+                    throw CKError(code: .internalError, userInfo: [:])
                 }
                 return record
             }.eraseToAnyPublisher()

@@ -159,7 +159,7 @@ public class CKDatabase {
                 }
             }, receiveValue: { response in
                 guard let responseRecord = response.records.first else {
-                    completionHandler(nil, CKError(code: .internalError))
+                    completionHandler(nil, CKError(code: .internalError, userInfo: [:]))
                     return
                 }
                 let recordID = CKRecord.ID(recordName: responseRecord.recordName)
