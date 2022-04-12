@@ -74,8 +74,17 @@ extension NetworkSession {
         return self.successfulDataTaskPublisher(for: request)
             .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
             .tryMap { response in
-                guard let responseRecord = response.records.first,
-                      let record = CKRecord(ckwsRecordResponse: responseRecord) else {
+                guard let responseRecord = response.records.first else {
+                    throw CKError(code: .internalError, userInfo: [:])
+                }
+                if let errorCode = responseRecord.serverErrorCode {
+                    if errorCode == "NOT_FOUND" {
+                        throw CKError(code: .unknownItem, userInfo: [:])
+                    } else {
+                        throw CKError(code: .internalError, userInfo: [:])
+                    }
+                }
+                guard let record = CKRecord(ckwsRecordResponse: responseRecord) else {
                     throw CKError(code: .internalError, userInfo: [:])
                 }
                 return record
@@ -141,7 +150,9 @@ extension NetworkSession {
                                                     recordType: record.recordType,
                                                     recordChangeTag: record.recordChangeTag,
                                                     fields: fields,
-                                                    created: nil)
+                                                    created: nil,
+                                                    serverErrorCode: nil,
+                                                    reason: nil)
         let operationType: CKWSRecordOperation.OperationType = record.creationDate == nil ? .create : .update
         let operation = CKWSRecordOperation(operationType: operationType,
                                             desiredKeys: nil,
@@ -218,7 +229,9 @@ extension NetworkSession {
                                                     recordType: nil,
                                                     recordChangeTag: nil,
                                                     fields: nil,
-                                                    created: nil)
+                                                    created: nil,
+                                                    serverErrorCode: nil,
+                                                    reason: nil)
         let operationType: CKWSRecordOperation.OperationType = .forceDelete
         let operation = CKWSRecordOperation(operationType: operationType,
                                             desiredKeys: nil,

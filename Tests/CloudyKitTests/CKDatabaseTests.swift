@@ -515,6 +515,32 @@ final class CKDatabaseTests: XCTestCase {
         self.wait(for: [expectation], timeout: 1)
     }
     
+    func testNotFoundError() {
+        let response = """
+{
+    "records": [{
+        "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+        "serverErrorCode" : "NOT_FOUND",
+        "reason" : "Record not found"
+    }]
+}
+"""
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let recordID = CKRecord.ID(recordName: "E621E1F8-C36C-495A-93FC-0C247A3E6E5F")
+        let expectation = self.expectation(description: "completion handler called")
+        database.fetch(withRecordID: recordID) { (record, error) in
+            XCTAssertNil(record)
+            XCTAssertNotNil(error)
+            XCTAssertEqual(CloudyKit.CKError.Code.unknownItem.rawValue, (error as? CloudyKit.CKError)?.errorCode)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation], timeout: 1)
+    }
+    
     func testQueriedTypeIsNotIndexableError() {
         let response = """
 {

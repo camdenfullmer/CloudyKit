@@ -179,6 +179,8 @@ struct CKWSRecordDictionary: Codable {
     let recordChangeTag: String?
     let fields: [String:CKWSRecordFieldValue]?
     let created: CKWSResponseCreated?
+    let serverErrorCode: String?
+    let reason: String?
 }
 
 struct CKWSRecordOperation: Encodable {
