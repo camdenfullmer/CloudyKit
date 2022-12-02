@@ -275,6 +275,58 @@ final class CKDatabaseTests: XCTestCase {
         self.wait(for: [expectation], timeout: 1)
     }
     
+    func testSaveNewRecordWithEmptyStringArray() {
+        let response = """
+{
+        "records": [
+            {
+                "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+                "recordType": "Users",
+                "recordChangeTag": "\(UUID().uuidString)",
+                "created": {
+                    "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
+                },
+                "fields": {
+                    "stringsList": {"value": [], "type": "STRING_LIST"},
+                }
+            }
+        ]
+}
+"""
+        let noAssetUploadExpectation = self.expectation(description: "asset upload was not triggered")
+        mockedSession?.responseHandler = { request in
+            if let url = request.url?.absoluteString {
+                if url.contains("assets/upload") {
+                    noAssetUploadExpectation.fulfill()
+                }
+            }
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
+        
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let record = CloudyKit.CKRecord(recordType: "Users")
+        record["stringsList"] = []
+        XCTAssertNil(record.creationDate)
+        let expectation = self.expectation(description: "completion handler called")
+        noAssetUploadExpectation.isInverted = true
+        database.save(record) { (record, error) in
+            XCTAssertEqual("POST", self.mockedSession?.requests.first?.httpMethod)
+            XCTAssertNotNil(self.mockedSession?.requests.first?.httpBody)
+            XCTAssertEqual("1234567890", self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
+            XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
+            XCTAssertNil(error)
+            XCTAssertNotNil(record)
+            XCTAssertEqual("Users", record?.recordType)
+            XCTAssertEqual([], record?["stringsList"] as? [String])
+            XCTAssertNotNil(record?.creationDate)
+            XCTAssertNotNil(record?.recordChangeTag)
+            expectation.fulfill()
+        }
+        self.wait(for: [expectation, noAssetUploadExpectation], timeout: 1)
+    }
+    
     func testFetchRecord() {
         let response = """
 {
