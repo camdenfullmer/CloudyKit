@@ -14,6 +14,10 @@ import OpenCombineFoundation
 import Combine
 #endif
 
+enum NetworkSessionError: Error {
+    case unableToHandle(value: String, type: String)
+}
+
 internal protocol NetworkSession {
     func internalDataTask(with request: URLRequest, completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void) -> NetworkSessionDataTask
     func internalDataTaskPublisher(for request: URLRequest) -> AnyPublisher<(data: Data, response: URLResponse), Error>
@@ -143,7 +147,10 @@ extension NetworkSession {
                 let dictionaries = value.map { CKWSReferenceDictionary(recordName: $0.recordID.recordName, action: $0.action.stringValue) }
                 fields[fieldName] = CKWSRecordFieldValue(value: .referenceList(dictionaries), type: nil)
             default:
-                fatalError("unable to handle \(value) of type \(type(of: value))")
+                return Fail(error: NetworkSessionError.unableToHandle(
+                    value: "\(value)",
+                    type: "\(type(of: value))")
+                ).eraseToAnyPublisher()
             }
         }
         let recordDictionary = CKWSRecordDictionary(recordName: record.recordID.recordName,
@@ -191,30 +198,34 @@ extension NetworkSession {
     }
     
     internal func queryTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, query: CKQuery, zoneID: CKRecordZone.ID?) -> AnyPublisher<[CKRecord], Error> {
-        let now = Date()
-        let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/query"
-        var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue(CloudyKitConfig.serverKeyID, forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID")
-        request.addValue(CloudyKitConfig.dateFormatter.string(from: now), forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date")
-        var zoneIDDict: CKWSZoneIDDictionary? = nil
-        if let zoneID = zoneID {
-            zoneIDDict = CKWSZoneIDDictionary(zoneName: zoneID.zoneName, ownerName: zoneID.ownerName)
-        }
-        // TODO: Support results limit.
-        let filterBy = query.predicate.filterBy
-        let sortBy = query.sortDescriptors?.compactMap { CKWSSortDescriptorDictionary(fieldName: $0.key, ascending: $0.ascending) }
-        let queryDict = CKWSQueryDictionary(recordType: query.recordType, filterBy: filterBy, sortBy: sortBy)
-        let queryRequest = CKWSQueryRequest(zoneID: zoneIDDict, resultsLimit: nil, query: queryDict)
-        if let data = try? CloudyKitConfig.encoder.encode(queryRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
-            let signature = CKRequestSignature(data: data, date: now, path: path, privateKey: privateKey)
-            if let signatureValue = try? signature.sign() {
-                request.addValue(signatureValue, forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1")
+        do {
+            let now = Date()
+            let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/query"
+            var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
+            request.httpMethod = "POST"
+            request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.addValue(CloudyKitConfig.serverKeyID, forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID")
+            request.addValue(CloudyKitConfig.dateFormatter.string(from: now), forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date")
+            var zoneIDDict: CKWSZoneIDDictionary? = nil
+            if let zoneID = zoneID {
+                zoneIDDict = CKWSZoneIDDictionary(zoneName: zoneID.zoneName, ownerName: zoneID.ownerName)
             }
-            request.httpBody = data
+            // TODO: Support results limit.
+            let filterBy = query.predicate.filterBy
+            let sortBy = query.sortDescriptors?.compactMap { CKWSSortDescriptorDictionary(fieldName: $0.key, ascending: $0.ascending) }
+            let queryDict = try CKWSQueryDictionary(recordType: query.recordType, filterBy: filterBy(), sortBy: sortBy)
+            let queryRequest = CKWSQueryRequest(zoneID: zoneIDDict, resultsLimit: nil, query: queryDict)
+            if let data = try? CloudyKitConfig.encoder.encode(queryRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
+                let signature = CKRequestSignature(data: data, date: now, path: path, privateKey: privateKey)
+                if let signatureValue = try? signature.sign() {
+                    request.addValue(signatureValue, forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1")
+                }
+                request.httpBody = data
+            }
+            return self.recordsTaskPublisher(for: request)
+        } catch {
+            return Fail(error: error).eraseToAnyPublisher()
         }
-        return self.recordsTaskPublisher(for: request)
     }
     
     internal func deleteTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, recordID: CKRecord.ID) -> AnyPublisher<CKWSRecordResponse, Error> {
