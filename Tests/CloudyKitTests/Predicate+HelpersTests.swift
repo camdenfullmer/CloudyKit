@@ -13,7 +13,7 @@ import FoundationNetworking
 
 final class PredicatePlusHelpersTests: XCTestCase {
     
-    func testFieldContainsSpecificValue() {
+    func testFieldContainsSpecificValue() throws {
         let predicates = [
             Predicate(format: "ANY favoriteColors = 'red'"),
             Predicate(format: "favoriteColors CONTAINS 'red'"),
@@ -24,28 +24,28 @@ final class PredicatePlusHelpersTests: XCTestCase {
         for predicate in predicates {
             XCTAssertEqual([
                 CKWSFilterDictionary(comparator: .listContains, fieldName: "favoriteColors", fieldValue: CKWSRecordFieldValue(value: .string("red"), type: nil))
-            ], predicate.filterBy)
+            ], try predicate.filterBy())
         }
     }
     
-    func testMatchFieldToSpecificValue() {
+    func testMatchFieldToSpecificValue() throws {
         let numberPredicate = Predicate(format: "29 = age")
-        XCTAssertEqual([CKWSFilterDictionary(comparator: .equals, fieldName: "age", fieldValue: CKWSRecordFieldValue(value: .number(29), type: nil))], numberPredicate.filterBy)
+        XCTAssertEqual([CKWSFilterDictionary(comparator: .equals, fieldName: "age", fieldValue: CKWSRecordFieldValue(value: .number(29), type: nil))], try numberPredicate.filterBy())
         
         let date = NSDate(timeIntervalSince1970: 123456789)
         let datePredicate = Predicate(format: "today == %@", date)
-        XCTAssertEqual([CKWSFilterDictionary(comparator: .equals, fieldName: "today", fieldValue: CKWSRecordFieldValue(value: .dateTime(Int(date.timeIntervalSince1970 * 1000)), type: nil))], datePredicate.filterBy)
+        XCTAssertEqual([CKWSFilterDictionary(comparator: .equals, fieldName: "today", fieldValue: CKWSRecordFieldValue(value: .dateTime(Int(date.timeIntervalSince1970 * 1000)), type: nil))], try datePredicate.filterBy())
         
         let stringPredicate = Predicate(format: "'red' = favoriteColor")
-        XCTAssertEqual([CKWSFilterDictionary(comparator: .equals, fieldName: "favoriteColor", fieldValue: CKWSRecordFieldValue(value: .string("red"), type: nil))], stringPredicate.filterBy)
+        XCTAssertEqual([CKWSFilterDictionary(comparator: .equals, fieldName: "favoriteColor", fieldValue: CKWSRecordFieldValue(value: .string("red"), type: nil))], try stringPredicate.filterBy())
 
         let recordID = CKRecord.ID(recordName: UUID().uuidString)
         let reference = CKRecord.Reference(recordID: recordID, action: .none)
         let referencePredicate = Predicate(format: "employee == %@", reference)
-        XCTAssertEqual([CKWSFilterDictionary(comparator: .equals, fieldName: "employee", fieldValue: CKWSRecordFieldValue(value: .reference(CKWSReferenceDictionary(recordName: recordID.recordName, action: "NONE")), type: nil))], referencePredicate.filterBy)
+        XCTAssertEqual([CKWSFilterDictionary(comparator: .equals, fieldName: "employee", fieldValue: CKWSRecordFieldValue(value: .reference(CKWSReferenceDictionary(recordName: recordID.recordName, action: "NONE")), type: nil))], try referencePredicate.filterBy())
     }
     
-    func testMatchFieldToOneOrMoreValues() {
+    func testMatchFieldToOneOrMoreValues() throws {
         let predicates = [
             Predicate(format: "ANY { 'red', 'green' } = favoriteColor"),
             Predicate(format: "favoriteColor IN { 'red', 'green' }"),
@@ -54,11 +54,11 @@ final class PredicatePlusHelpersTests: XCTestCase {
         for predicate in predicates {
             XCTAssertEqual([
                 CKWSFilterDictionary(comparator: .in, fieldName: "favoriteColor", fieldValue: CKWSRecordFieldValue(value: .stringList(["red", "green"]), type: nil))
-            ], predicate.filterBy)
+            ], try predicate.filterBy())
         }
     }
     
-    func testMatchFieldThatStartsWithStringValue() {
+    func testMatchFieldThatStartsWithStringValue() throws {
         let predicates = [
             Predicate(format: "ANY favoriteColors BEGINSWITH 'red'"),
             Predicate(format: "ANY favoriteColors BEGINSWITH %@", "red"),
@@ -67,11 +67,11 @@ final class PredicatePlusHelpersTests: XCTestCase {
         for predicate in predicates {
             XCTAssertEqual([
                 CKWSFilterDictionary(comparator: .beginsWith, fieldName: "favoriteColors", fieldValue: CKWSRecordFieldValue(value: .string("red"), type: nil))
-            ], predicate.filterBy)
+            ], try predicate.filterBy())
         }
     }
     
-    func testEqualsComparator() {
+    func testEqualsComparator() throws {
         let predicates = [
             Predicate(format: "number = 13"),
             Predicate(format: "number == 13"),
@@ -79,11 +79,11 @@ final class PredicatePlusHelpersTests: XCTestCase {
         for predicate in predicates {
             XCTAssertEqual([
                 CKWSFilterDictionary(comparator: .equals, fieldName: "number", fieldValue: CKWSRecordFieldValue(value: .number(13), type: nil))
-            ], predicate.filterBy)
+            ], try predicate.filterBy())
         }
     }
     
-    func testGreaterThanOrEqualsComparator() {
+    func testGreaterThanOrEqualsComparator() throws {
         let predicates = [
             Predicate(format: "number >= 13"),
             Predicate(format: "number => 13"),
@@ -91,11 +91,11 @@ final class PredicatePlusHelpersTests: XCTestCase {
         for predicate in predicates {
             XCTAssertEqual([
                 CKWSFilterDictionary(comparator: .greaterThanOrEquals, fieldName: "number", fieldValue: CKWSRecordFieldValue(value: .number(13), type: nil))
-            ], predicate.filterBy)
+            ], try predicate.filterBy())
         }
     }
     
-    func testLessThanOrEqualsComparator() {
+    func testLessThanOrEqualsComparator() throws {
         let predicates = [
             Predicate(format: "number <= 13"),
             Predicate(format: "number =< 13"),
@@ -103,25 +103,25 @@ final class PredicatePlusHelpersTests: XCTestCase {
         for predicate in predicates {
             XCTAssertEqual([
                 CKWSFilterDictionary(comparator: .lessThanOrEquals, fieldName: "number", fieldValue: CKWSRecordFieldValue(value: .number(13), type: nil))
-            ], predicate.filterBy)
+            ], try predicate.filterBy())
         }
     }
     
-    func testGreaterThanComparator() {
+    func testGreaterThanComparator() throws {
         let predicate = Predicate(format: "number > 13")
         XCTAssertEqual([
             CKWSFilterDictionary(comparator: .greaterThan, fieldName: "number", fieldValue: CKWSRecordFieldValue(value: .number(13), type: nil))
-        ], predicate.filterBy)
+        ], try predicate.filterBy())
     }
     
     func testLessThanComparator() {
         let predicate = Predicate(format: "number < 13")
         XCTAssertEqual([
             CKWSFilterDictionary(comparator: .lessThan, fieldName: "number", fieldValue: CKWSRecordFieldValue(value: .number(13), type: nil))
-        ], predicate.filterBy)
+        ], try predicate.filterBy())
     }
     
-    func testNotEqualsComparator() {
+    func testNotEqualsComparator() throws {
         let predicates = [
             Predicate(format: "number != 13"),
             Predicate(format: "number <> 13"),
@@ -129,13 +129,13 @@ final class PredicatePlusHelpersTests: XCTestCase {
         for predicate in predicates {
             XCTAssertEqual([
                 CKWSFilterDictionary(comparator: .notEquals, fieldName: "number", fieldValue: CKWSRecordFieldValue(value: .number(13), type: nil))
-            ], predicate.filterBy)
+            ], try predicate.filterBy())
         }
     }
     
-    func testValuePredicates() {
+    func testValuePredicates() throws {
         let truePredicate = Predicate(value: true)
-        XCTAssertEqual([], truePredicate.filterBy)
+        XCTAssertEqual([], try truePredicate.filterBy())
     }
     
     static var allTests = [

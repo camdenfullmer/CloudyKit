@@ -13,6 +13,10 @@ public typealias Predicate = CKPredicate
 public typealias Predicate = NSPredicate
 #endif
 
+enum CKPredicateError: Error {
+    case invalidPredicate(String)
+}
+
 public class CKPredicate {
     
     public let predicateFormat: String
@@ -30,6 +34,12 @@ public class CKPredicate {
             if index > 0, arguments.count > 0 {
                 let argument = argumentsLeft.removeFirst()
                 switch argument {
+                case is [String]:
+                    let stringList = argument as? [String] ?? []
+                    let formattedStringList = stringList
+                        .map { "\"\($0)\"" }
+                        .joined(separator: ", ")
+                    substitution += "{ \(formattedStringList) }"
                 case is String:
                     substitution += "\"\(argument)\""
                 case let date as NSDate:
@@ -58,16 +68,16 @@ public class CKPredicate {
 
 extension Predicate {
     
-    var filterBy: [CKWSFilterDictionary]? {
+    func filterBy() throws -> [CKWSFilterDictionary]? {
         guard self.predicateFormat != "TRUEPREDICATE" else {
             return []
         }
         guard self.predicateFormat != "FALSEPREDICATE" else {
-            fatalError("invalid predicate: \(self.predicateFormat)")
+            throw CKPredicateError.invalidPredicate(self.predicateFormat)
         }
         
         var filters: [CKWSFilterDictionary] = []
-        let (originalComparator, fields) = self.comparatorWithFields()
+        let (originalComparator, fields) = try self.comparatorWithFields()
         var comparator = originalComparator
         var fieldName: String?
         var fieldValue: CKWSRecordFieldValue?
@@ -114,92 +124,92 @@ extension Predicate {
         }
         
         guard let fv = fieldValue, let fn = fieldName else {
-            fatalError("invalid predicate: \(self.predicateFormat)")
+            throw CKPredicateError.invalidPredicate(self.predicateFormat)
         }
         filters.append(CKWSFilterDictionary(comparator: comparator, fieldName: fn, fieldValue: fv))
         return filters
     }
     
-    private func comparatorWithFields() -> (CKWSFilterDictionary.Comparator, [String]) {
-        let doubleEqualsSplits = self.predicateFormat.components(separatedBy: "==")
+    private func comparatorWithFields() throws -> (CKWSFilterDictionary.Comparator, [String]) {
+        let doubleEqualsSplits = self.predicateFormat.components(separatedByFirst: "==")
         if doubleEqualsSplits.count == 2 {
             let fields = doubleEqualsSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
             return (.equals, fields)
         }
         
-        let greaterThanOrEqualsSplits = self.predicateFormat.components(separatedBy: ">=")
+        let greaterThanOrEqualsSplits = self.predicateFormat.components(separatedByFirst: ">=")
         if greaterThanOrEqualsSplits.count == 2 {
             let fields = greaterThanOrEqualsSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
             return (.greaterThanOrEquals, fields)
         }
     
-        let equalsOrGreaterThanSplits = self.predicateFormat.components(separatedBy: "=>")
+        let equalsOrGreaterThanSplits = self.predicateFormat.components(separatedByFirst: "=>")
         if equalsOrGreaterThanSplits.count == 2 {
             let fields = equalsOrGreaterThanSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
             return (.greaterThanOrEquals, fields)
         }
         
-        let lessThanOrEqualsSplits = self.predicateFormat.components(separatedBy: "<=")
+        let lessThanOrEqualsSplits = self.predicateFormat.components(separatedByFirst: "<=")
         if lessThanOrEqualsSplits.count == 2 {
             let fields = lessThanOrEqualsSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
             return (.lessThanOrEquals, fields)
         }
         
-        let equalsOrLessThanSplits = self.predicateFormat.components(separatedBy: "=<")
+        let equalsOrLessThanSplits = self.predicateFormat.components(separatedByFirst: "=<")
         if equalsOrLessThanSplits.count == 2 {
             let fields = equalsOrLessThanSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
             return (.lessThanOrEquals, fields)
         }
         
-        let notEquals = self.predicateFormat.components(separatedBy: "!=")
+        let notEquals = self.predicateFormat.components(separatedByFirst: "!=")
         if notEquals.count == 2 {
             let fields = notEquals.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
             return (.notEquals, fields)
         }
         
-        let 🥕🥕Splits = self.predicateFormat.components(separatedBy: "<>")
+        let 🥕🥕Splits = self.predicateFormat.components(separatedByFirst: "<>")
         if 🥕🥕Splits.count == 2 {
             let fields = 🥕🥕Splits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
             return (.notEquals, fields)
         }
         
-        let equalsSplits = self.predicateFormat.components(separatedBy: "=")
+        let equalsSplits = self.predicateFormat.components(separatedByFirst: "=")
         if equalsSplits.count == 2 {
            let fields = equalsSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
            return (.equals, fields)
         }
         
-        let greaterThanSplits = self.predicateFormat.components(separatedBy: ">")
+        let greaterThanSplits = self.predicateFormat.components(separatedByFirst: ">")
         if greaterThanSplits.count == 2 {
            let fields = greaterThanSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
            return (.greaterThan, fields)
         }
         
-        let lessThanSplits = self.predicateFormat.components(separatedBy: "<")
+        let lessThanSplits = self.predicateFormat.components(separatedByFirst: "<")
         if lessThanSplits.count == 2 {
            let fields = lessThanSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
            return (.lessThan, fields)
         }
         
-        let containsSplits = self.predicateFormat.components(separatedBy: "CONTAINS")
+        let containsSplits = self.predicateFormat.components(separatedByFirst: "CONTAINS")
         if containsSplits.count == 2 {
            let fields = containsSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
            return (.listContains, fields)
         }
         
-        let beginsWithSplits = self.predicateFormat.components(separatedBy: "BEGINSWITH")
+        let beginsWithSplits = self.predicateFormat.components(separatedByFirst: "BEGINSWITH")
         if beginsWithSplits.count == 2 {
            let fields = beginsWithSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
            return (.beginsWith, fields)
         }
         
-        let inSplits = self.predicateFormat.components(separatedBy: "IN")
+        let inSplits = self.predicateFormat.components(separatedByFirst: "IN")
         if inSplits.count == 2 {
             let fields = inSplits.compactMap { String($0).trimmingCharacters(in: .whitespaces) }
             return (.in, fields)
         }
-        
-        fatalError("invalid predicate: \(self.predicateFormat)")
+
+        throw CKPredicateError.invalidPredicate(self.predicateFormat)
     }
     
 }
