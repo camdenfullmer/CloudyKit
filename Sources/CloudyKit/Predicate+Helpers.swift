@@ -34,6 +34,12 @@ public class CKPredicate {
             if index > 0, arguments.count > 0 {
                 let argument = argumentsLeft.removeFirst()
                 switch argument {
+                case is [String]:
+                    let stringList = argument as? [String] ?? []
+                    let formattedStringList = stringList
+                        .map { "\"\($0)\"" }
+                        .joined(separator: ", ")
+                    substitution += "{ \(formattedStringList) }"
                 case is String:
                     substitution += "\"\(argument)\""
                 case let date as NSDate:
