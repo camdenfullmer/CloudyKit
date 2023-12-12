@@ -129,6 +129,105 @@ final class CKDatabaseTests: XCTestCase {
         }
         self.wait(for: [expectation], timeout: 1)
     }
+
+    func testSaveNewRecordAsync() async throws {
+        let response = """
+{
+        "records": [
+            {
+                "recordName": "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+                "recordType": "Users",
+                "recordChangeTag": "\(UUID().uuidString)",
+                "created": {
+                    "timestamp": \(Int(Date().timeIntervalSince1970 * 1000))
+                },
+                "fields": {
+                    "firstName" : {"value" : "Mei", "type": "STRING"},
+                    "lastName" : {"value" : "Chen", "type": "STRING"},
+                    "width": {"value": 18},
+                    "height": {"value": 24},
+                    "bytes": {"value": "AAECAwQ=", "type": "BYTES"},
+                    "bytesList": {"value": ["AAECAwQ="], "type": "BYTES_LIST"},
+                    "double": {"value": 1.234, "type": "DOUBLE"},
+                    "stringsList": {"value": ["foo", "bar"], "type": "STRING_LIST"},
+                    "reference": {
+                        "value": {
+                            "recordName": "D27CC4CB-CC49-4710-9370-418A0E97D71C",
+                            "action": "NONE"
+                        }
+                    },
+                    "referenceList" : {
+                        "value" : [ {
+                            "recordName" : "D27CC4CB-CC49-4710-9370-418A0E97D71C",
+                            "action" : "NONE",
+                            "zoneID" : {
+                                "zoneName" : "_defaultZone",
+                                "ownerRecordName" : "_defaultOwner",
+                                "zoneType" : "DEFAULT_ZONE"
+                            }
+                        }, {
+                            "recordName" : "D27CC4CB-CC49-4710-9370-418A0E97D71C",
+                            "action" : "NONE",
+                            "zoneID" : {
+                                "zoneName" : "_defaultZone",
+                                "ownerRecordName" : "_defaultOwner",
+                                "zoneType" : "DEFAULT_ZONE"
+                            }
+                        } ],
+                        "type" : "REFERENCE_LIST"
+                    },
+                    "dateTime": { "value": 1609034460447, "type": "TIMESTAMP" }
+                }
+            }
+        ]
+}
+"""
+        mockedSession?.responseHandler = { _ in
+            return (response.data(using: .utf8), HTTPURLResponse(url: URL(string: "https://apple.com")!, statusCode: 200, httpVersion: nil, headerFields: [:]), nil)
+        }
+        
+        let container = CKContainer(identifier: "iCloud.com.example.myexampleapp")
+        let database = container.publicDatabase
+        let record = CloudyKit.CKRecord(recordType: "Users")
+        let reference = CKRecord.Reference(recordID: CKRecord.ID(recordName: "D27CC4CB-CC49-4710-9370-418A0E97D71C"), action: .none)
+        let dateTime = Date(timeIntervalSince1970: TimeInterval(1609034460447) / 1000)
+        record["firstName"] = "Mei"
+        record["lastName"] = "Chen"
+        record["width"] = 18
+        record["height"] = 24
+        let data = Data([0, 1, 2, 3, 4])
+        record["bytes"] = data
+        record["bytesList"] = [data]
+        record["stringsList"] = ["foo", "bar"]
+        record["double"] = 1.234
+        record["reference"] = reference
+        record["referenceList"] = [reference, reference]
+        record["dateTime"] = dateTime
+        XCTAssertNil(record.creationDate)
+        let returnedRecord = try await database.save(record)
+
+        XCTAssertEqual("POST", self.mockedSession?.requests.first?.httpMethod)
+        XCTAssertNotNil(self.mockedSession?.requests.first?.httpBody)
+        XCTAssertEqual("1234567890", self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID"))
+        XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1"))
+        XCTAssertNotNil(self.mockedSession?.requests.first?.value(forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date"))
+        XCTAssertNotNil(returnedRecord)
+        XCTAssertEqual("Users", returnedRecord?.recordType)
+        XCTAssertEqual("E621E1F8-C36C-495A-93FC-0C247A3E6E5F", returnedRecord?.recordID.recordName)
+        XCTAssertEqual("Mei", returnedRecord?["firstName"] as? String)
+        XCTAssertEqual("Chen", returnedRecord?["lastName"] as? String)
+        XCTAssertEqual(18, returnedRecord?["width"] as? Int)
+        XCTAssertEqual(24, returnedRecord?["height"] as? Int)
+        XCTAssertEqual(Data([0, 1, 2, 3, 4]), returnedRecord?["bytes"] as? Data)
+        XCTAssertEqual([Data([0, 1, 2, 3, 4])], returnedRecord?["bytesList"] as? [Data])
+        XCTAssertEqual(["foo","bar"], returnedRecord?["stringsList"] as? [String])
+        XCTAssertEqual(1.234, returnedRecord?["double"] as? Double)
+        XCTAssertEqual(reference, returnedRecord?["reference"] as? CloudyKit.CKRecord.Reference)
+        XCTAssertEqual([reference, reference], (returnedRecord?["referenceList"] as? [CloudyKit.CKRecord.Reference]))
+        XCTAssertEqual(dateTime, returnedRecord?["dateTime"] as? Date)
+        XCTAssertNotNil(returnedRecord?.creationDate)
+        XCTAssertNotNil(returnedRecord?.recordChangeTag)
+    }
     
     func testSaveNewRecordWithZeroDouble() {
         let response = """
