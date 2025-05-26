@@ -1,4 +1,4 @@
-FROM swift:5.7.0
+FROM swift:6.0.3
 
 RUN apt-get update && apt-get install -y \
   openssl \

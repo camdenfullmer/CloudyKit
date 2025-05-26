@@ -16,15 +16,12 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            name: "Cryptor",
             url: "https://github.com/IBM-Swift/BlueCryptor.git",
             from: "1.0.32"),
         .package(
-            name: "CryptorECC",
             url: "https://github.com/IBM-Swift/BlueECC.git",
             from: "1.2.4"),
         .package(
-            name: "OpenCombine",
             url: "https://github.com/OpenCombine/OpenCombine.git",
             from: "0.11.0"),
     ],
@@ -34,8 +31,8 @@ let package = Package(
         .target(
             name: "CloudyKit",
             dependencies: [
-                "Cryptor",
-                "CryptorECC",
+                .product(name: "Cryptor", package: "BlueCryptor"),
+                .product(name: "CryptorECC", package: "BlueECC"),
                 "OpenCombine",
                 .product(name: "OpenCombineFoundation", package: "OpenCombine"),
             ]),
