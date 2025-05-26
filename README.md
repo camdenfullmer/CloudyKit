@@ -63,11 +63,13 @@ Below is the list of supported and upcoming features for CloudyKit.
 - [x] Querying Records
 - [x] Deleting Records
 - [x] Uploading Assets
+- [ ] Async/Await API
 - [ ] All Types (missing Locations, Lists)
 - [ ] Private and Shared Databases
 - [ ] Operations
 - [ ] Errors
 - [ ] Fetching Record Changes
+- [ ] Use Swift Logging
 
 ## API Differences
 

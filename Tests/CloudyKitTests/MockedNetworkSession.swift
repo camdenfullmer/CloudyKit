@@ -101,4 +101,13 @@ class MockedNetworkSession: NetworkSession {
         return MockedURLSessionDataPublisher(data: data, response: response, error: error)
             .eraseToAnyPublisher()
     }
+    
+    func internalData(for request: URLRequest) async throws -> (Data, URLResponse)  {
+        self.requests.append(request)
+        let (data, response, error) = self.responseHandler?(request) ?? (nil, nil, nil)
+        if let error {
+            throw error
+        }
+        return (data!, response!)
+    }
 }

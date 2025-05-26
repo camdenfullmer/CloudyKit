@@ -181,6 +181,15 @@ public class CKDatabase {
                 completionHandler(record, nil)
             })
     }
+    
+    public func perform(_ query: CKQuery, inZoneWith zoneID: CKRecordZone.ID?) async throws -> [CKRecord] {
+        let request = URLRequest.queryRequest(
+            database: self,
+            environment: CloudyKitConfig.environment,
+            query: query,
+            zoneID: zoneID)
+        return try await CloudyKitConfig.urlSession.records(for: request)
+    }
 }
 
 extension CKDatabase.Scope: CustomStringConvertible {

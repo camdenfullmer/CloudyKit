@@ -17,6 +17,7 @@ import Combine
 internal protocol NetworkSession {
     func internalDataTask(with request: URLRequest, completionHandler: @escaping (Data?, URLResponse?, Error?) -> Void) -> NetworkSessionDataTask
     func internalDataTaskPublisher(for request: URLRequest) -> AnyPublisher<(data: Data, response: URLResponse), Error>
+    func internalData(for request: URLRequest) async throws -> (Data, URLResponse)
 }
 
 internal protocol NetworkSessionDataTask {
@@ -32,6 +33,10 @@ extension URLSession: NetworkSession {
         return self.dataTaskPublisher(for: request)
             .mapError { $0 as Error }
             .eraseToAnyPublisher()
+    }
+    
+    func internalData(for request: URLRequest) async throws -> (Data, URLResponse) {
+        return try await data(for: request)
     }
 }
 
@@ -70,6 +75,36 @@ extension NetworkSession {
             }.eraseToAnyPublisher()
     }
     
+    private func successfulData(for request: URLRequest) async throws -> Data {
+        let (data, response) = try await internalData(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw CKError(code: .internalError, userInfo: [:])
+        }
+        if CloudyKitConfig.debug {
+            print("=== CloudKit Web Services Request ===")
+            print("URL: \(request.url?.absoluteString ?? "no url")")
+            print("Method: \(request.httpMethod ?? "no method")")
+            print("Data:")
+            print("\(String(data: request.httpBody ?? Data(), encoding: .utf8) ?? "no data")")
+            print("======================================")
+            print("=== CloudKit Web Services Response ===")
+            print("Status Code: \(httpResponse.statusCode)")
+            print("Data:")
+            print("\(String(data: data, encoding: .utf8) ?? "invalid data")")
+            print("======================================")
+        }
+        if let ckwsError = try? CloudyKitConfig.decoder.decode(CKWSErrorResponse.self, from: data) {
+            if CloudyKitConfig.debug {
+                print("error: \(ckwsError)")
+            }
+            throw ckwsError.ckError
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw CKError(code: .internalError, userInfo: [:])
+        }
+        return data
+    }
+    
     internal func recordTaskPublisher(for request: URLRequest) -> AnyPublisher<CKRecord, Error> {
         return self.successfulDataTaskPublisher(for: request)
             .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
@@ -96,6 +131,12 @@ extension NetworkSession {
             .decode(type: CKWSRecordResponse.self, decoder: CloudyKitConfig.decoder)
             .tryMap { $0.records.compactMap { CKRecord(ckwsRecordResponse: $0) } }
             .eraseToAnyPublisher()
+    }
+    
+    internal func records(for request: URLRequest) async throws -> [CKRecord] {
+        let data = try await successfulData(for: request)
+        return try CloudyKitConfig.decoder.decode(CKWSRecordResponse.self, from: data)
+            .records.compactMap { CKRecord(ckwsRecordResponse: $0) }
     }
     
     internal func saveTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, record: CKRecord, assetUploadResponses: [(String, CKWSAssetUploadResponse)] = []) -> AnyPublisher<CKRecord, Error> {
@@ -191,30 +232,13 @@ extension NetworkSession {
     }
     
     internal func queryTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, query: CKQuery, zoneID: CKRecordZone.ID?) -> AnyPublisher<[CKRecord], Error> {
-        let now = Date()
-        let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/query"
-        var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue(CloudyKitConfig.serverKeyID, forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID")
-        request.addValue(CloudyKitConfig.dateFormatter.string(from: now), forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date")
-        var zoneIDDict: CKWSZoneIDDictionary? = nil
-        if let zoneID = zoneID {
-            zoneIDDict = CKWSZoneIDDictionary(zoneName: zoneID.zoneName, ownerName: zoneID.ownerName)
-        }
-        // TODO: Support results limit.
-        let filterBy = query.predicate.filterBy
-        let sortBy = query.sortDescriptors?.compactMap { CKWSSortDescriptorDictionary(fieldName: $0.key, ascending: $0.ascending) }
-        let queryDict = CKWSQueryDictionary(recordType: query.recordType, filterBy: filterBy, sortBy: sortBy)
-        let queryRequest = CKWSQueryRequest(zoneID: zoneIDDict, resultsLimit: nil, query: queryDict)
-        if let data = try? CloudyKitConfig.encoder.encode(queryRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
-            let signature = CKRequestSignature(data: data, date: now, path: path, privateKey: privateKey)
-            if let signatureValue = try? signature.sign() {
-                request.addValue(signatureValue, forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1")
-            }
-            request.httpBody = data
-        }
-        return self.recordsTaskPublisher(for: request)
+        let request = URLRequest.queryRequest(
+            database: database,
+            environment: environment,
+            query: query,
+            zoneID: zoneID
+        )
+        return recordsTaskPublisher(for: request)
     }
     
     internal func deleteTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, recordID: CKRecord.ID) -> AnyPublisher<CKWSRecordResponse, Error> {
