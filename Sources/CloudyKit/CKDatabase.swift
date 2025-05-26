@@ -137,6 +137,16 @@ public class CKDatabase {
         }
     }
     
+    public func save(_ record: CKRecord) async throws -> CKRecord {
+        // TODO: Support assets.
+        let request = try URLRequest.saveRequest(
+            database: self,
+            environment: CloudyKitConfig.environment,
+            record: record
+        )
+        return try await URLSession.shared.record(for: request)
+    }
+    
     public func fetch(withRecordID recordID: CKRecord.ID, completionHandler: @escaping (CKRecord?, Error?) -> Void) {
         self.cancellable = CloudyKitConfig.urlSession.fetchTaskPublisher(database: self, environment: CloudyKitConfig.environment, recordID: recordID)
             .sink(receiveCompletion: { completion in
