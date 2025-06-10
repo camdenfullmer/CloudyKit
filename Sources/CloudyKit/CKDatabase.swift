@@ -160,6 +160,15 @@ public class CKDatabase {
             })
     }
     
+    public func record(for recordID: CKRecord.ID) async throws -> CKRecord {
+        let request = try URLRequest.fetchRequest(
+            database: self,
+            environment: CloudyKitConfig.environment,
+            recordID: recordID
+        )
+        return try await URLSession.shared.record(for: request)
+    }
+    
     public func delete(withRecordID recordID: CKRecord.ID, completionHandler: @escaping (CKRecord.ID?, Error?) -> Void) {
         self.cancellable = CloudyKitConfig.urlSession.deleteTaskPublisher(database: self, environment: CloudyKitConfig.environment, recordID: recordID)
             .sink(receiveCompletion: { completion in

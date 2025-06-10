@@ -175,25 +175,18 @@ extension NetworkSession {
     }
     
     internal func fetchTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, recordID: CKRecord.ID) -> AnyPublisher<CKRecord, Error> {
-        let now = Date()
-        let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/lookup"
-        var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue(CloudyKitConfig.serverKeyID, forHTTPHeaderField: "X-Apple-CloudKit-Request-KeyID")
-        request.addValue(CloudyKitConfig.dateFormatter.string(from: now), forHTTPHeaderField: "X-Apple-CloudKit-Request-ISO8601Date")
-        let records = [
-            CKWSLookupRecordDictionary(recordName: recordID.recordName)
-        ]
-        let fetchRequest = CKWSFetchRecordRequest(records: records)
-        if let data = try? CloudyKitConfig.encoder.encode(fetchRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
-            let signature = CKRequestSignature(data: data, date: now, path: path, privateKey: privateKey)
-            if let signatureValue = try? signature.sign() {
-                request.addValue(signatureValue, forHTTPHeaderField: "X-Apple-CloudKit-Request-SignatureV1")
-            }
-            request.httpBody = data
+        let result = Result {
+            try URLRequest.fetchRequest(
+                database: database,
+                environment: environment,
+                recordID: recordID
+            )
         }
-        return self.recordTaskPublisher(for: request)
+        return result.publisher
+            .flatMap { request in
+                self.recordTaskPublisher(for: request)
+            }
+            .eraseToAnyPublisher()
     }
     
     internal func queryTaskPublisher(database: CKDatabase, environment: CloudyKitConfig.Environment, query: CKQuery, zoneID: CKRecordZone.ID?) -> AnyPublisher<[CKRecord], Error> {
