@@ -201,13 +201,20 @@ public class CKDatabase {
             })
     }
     
-    public func perform(_ query: CKQuery, inZoneWith zoneID: CKRecordZone.ID?) async throws -> [CKRecord] {
+    public func records(matching query: CKQuery, inZoneWith zoneID: CKRecordZone.ID? = nil, desiredKeys: [CKRecord.FieldKey]? = nil, resultsLimit: Int = CKQueryOperation.maximumResults
+    ) async throws -> (matchResults: [(CKRecord.ID, Result<CKRecord, any Error>)], queryCursor: CKQueryOperation.Cursor?) {
         let request = URLRequest.queryRequest(
             database: self,
             environment: CloudyKitConfig.environment,
             query: query,
-            zoneID: zoneID)
-        return try await CloudyKitConfig.urlSession.records(for: request)
+            zoneID: zoneID,
+            resultsLimit: resultsLimit
+        )
+        let records = try await CloudyKitConfig.urlSession.records(for: request)
+        let matchResults = records.map {
+            ($0.recordID, Result<CKRecord, any Error>.success($0))
+        }
+        return (matchResults: matchResults, queryCursor: nil)
     }
 }
 

@@ -10,6 +10,7 @@ import Foundation
 public class CKRecord {
     
     public typealias RecordType = String
+    public typealias FieldKey = String
     
     public class ID {
         public let recordName: String

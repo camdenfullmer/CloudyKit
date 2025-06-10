@@ -82,7 +82,7 @@ extension URLRequest {
         return request
     }
     
-    static internal func queryRequest(database: CKDatabase, environment: CloudyKitConfig.Environment, query: CKQuery, zoneID: CKRecordZone.ID?) -> URLRequest {
+    static internal func queryRequest(database: CKDatabase, environment: CloudyKitConfig.Environment, query: CKQuery, zoneID: CKRecordZone.ID?, resultsLimit: Int) -> URLRequest {
         let now = Date()
         let path = "/database/1/\(database.containerIdentifier)/\(environment.rawValue)/\(database.databaseScope.description)/records/query"
         var request = URLRequest(url: URL(string: "\(CloudyKitConfig.host)\(path)")!)
@@ -94,11 +94,10 @@ extension URLRequest {
         if let zoneID = zoneID {
             zoneIDDict = CKWSZoneIDDictionary(zoneName: zoneID.zoneName, ownerName: zoneID.ownerName)
         }
-        // TODO: Support results limit.
         let filterBy = query.predicate.filterBy
         let sortBy = query.sortDescriptors?.compactMap { CKWSSortDescriptorDictionary(fieldName: $0.key, ascending: $0.ascending) }
         let queryDict = CKWSQueryDictionary(recordType: query.recordType, filterBy: filterBy, sortBy: sortBy)
-        let queryRequest = CKWSQueryRequest(zoneID: zoneIDDict, resultsLimit: nil, query: queryDict)
+        let queryRequest = CKWSQueryRequest(zoneID: zoneIDDict, resultsLimit: resultsLimit, query: queryDict)
         if let data = try? CloudyKitConfig.encoder.encode(queryRequest), let privateKey = CloudyKitConfig.serverPrivateKey {
             let signature = CKRequestSignature(data: data, date: now, path: path, privateKey: privateKey)
             if let signatureValue = try? signature.sign() {

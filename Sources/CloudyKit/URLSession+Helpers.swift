@@ -194,7 +194,8 @@ extension NetworkSession {
             database: database,
             environment: environment,
             query: query,
-            zoneID: zoneID
+            zoneID: zoneID,
+            resultsLimit: CKQueryOperation.maximumResults
         )
         return recordsTaskPublisher(for: request)
     }
