@@ -35,3 +35,6 @@ public class CKQuery {
     }
     
 }
+
+extension CKSortDescriptor: @unchecked Sendable {}
+extension CKQuery: @unchecked Sendable {}

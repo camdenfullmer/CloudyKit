@@ -16,7 +16,7 @@ final class CKContainerTests: XCTestCase {
         XCTAssertEqual(CKDatabase.Scope.public, container.publicDatabase.databaseScope)
     }
 
-    static var allTests = [
+    static let allTests = [
         ("testInit", testInit),
     ]
 }

@@ -23,3 +23,5 @@ public class CKRecordZone {
     }
     
 }
+
+extension CKRecordZone.ID: @unchecked Sendable {}

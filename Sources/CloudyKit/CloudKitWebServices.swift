@@ -20,7 +20,7 @@ extension CKWSErrorResponse {
             var userInfo: [String:Any] = [:]
             if reason == "Queried type is not marked indexable" {
                 userInfo[NSLocalizedDescriptionKey] = "Type is not marked indexable"
-            } else if reason.contains("is not marked queryable") && reason.hasPrefix("Field") {
+            } else {
                 userInfo[NSLocalizedDescriptionKey] = reason
             }
             return CKError(code: .invalidArguments, userInfo: userInfo)

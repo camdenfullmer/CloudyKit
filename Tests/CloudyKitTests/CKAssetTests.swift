@@ -20,7 +20,7 @@ final class CKAssetTests: XCTestCase {
         XCTAssertNotEqual(fileURL, asset.fileURL)
     }
 
-    static var allTests = [
+    static let allTests = [
         ("testInit", testInit),
     ]
 }

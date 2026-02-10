@@ -30,7 +30,7 @@ class CKRequestSignature {
         }
         let hash = dataDigest.final()
         let base64BodyHash = Data(bytes: hash, count: hash.count).base64EncodedString()
-        let signaturePayload = "\(CloudyKitConfig.dateFormatter.string(from: date)):\(base64BodyHash):\(path)"
+        let signaturePayload = "\(CloudyKitConfig.iso8601DateString(from: date)):\(base64BodyHash):\(path)"
         return try signaturePayload.sign(with: self.privateKey.ecPrivateKey).asn1.base64EncodedString()
     }
     

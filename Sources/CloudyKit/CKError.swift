@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct CKError: Error {
+public struct CKError: Error, @unchecked Sendable {
     public enum Code: Int {
         case internalError = 1
         case unknownItem = 11

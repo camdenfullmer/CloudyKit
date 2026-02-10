@@ -15,7 +15,7 @@ final class CKRecordTests: XCTestCase {
         XCTAssertEqual("Users", record.recordType)
     }
 
-    static var allTests = [
+    static let allTests = [
         ("testInit", testInit),
     ]
 }

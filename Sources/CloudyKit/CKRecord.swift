@@ -105,3 +105,7 @@ extension CKRecord.ID: CustomStringConvertible {
         
     }
 }
+
+extension CKRecord: @unchecked Sendable {}
+extension CKRecord.ID: @unchecked Sendable {}
+extension CKRecord.Reference: @unchecked Sendable {}

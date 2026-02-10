@@ -1,4 +1,4 @@
-// swift-tools-version:5.3
+// swift-tools-version:6.2
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -6,7 +6,9 @@ import PackageDescription
 let package = Package(
     name: "CloudyKit",
     platforms: [
-        .macOS(.v10_15),
+        .watchOS(.v7),
+        .iOS(.v15),
+        .macOS(.v10_15)
     ],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
@@ -16,17 +18,14 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            name: "Cryptor",
             url: "https://github.com/IBM-Swift/BlueCryptor.git",
             from: "1.0.32"),
         .package(
-            name: "CryptorECC",
             url: "https://github.com/IBM-Swift/BlueECC.git",
             from: "1.2.4"),
         .package(
-            name: "OpenCombine",
             url: "https://github.com/OpenCombine/OpenCombine.git",
-            from: "0.11.0"),
+            from: "0.14.0"),
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
@@ -34,9 +33,9 @@ let package = Package(
         .target(
             name: "CloudyKit",
             dependencies: [
-                "Cryptor",
-                "CryptorECC",
-                "OpenCombine",
+                .product(name: "Cryptor", package: "bluecryptor"),
+                .product(name: "CryptorECC", package: "blueecc"),
+                .product(name: "OpenCombine", package: "OpenCombine"),
                 .product(name: "OpenCombineFoundation", package: "OpenCombine"),
             ]),
         .testTarget(
